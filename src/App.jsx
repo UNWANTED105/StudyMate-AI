@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const sidebarItems = [
@@ -11,24 +11,24 @@ const sidebarItems = [
   'Settings',
 ]
 
-const dashboardStats = [
+const initialDashboardStats = [
   { label: 'Overall Progress', value: '68%', detail: 'This week' },
   { label: 'Quiz Average', value: '76%', detail: '+8% vs last month' },
   { label: 'Study Time', value: '14.5 hrs', detail: 'Across 3 subjects' },
   { label: 'Study Streak', value: '5 days', detail: 'Current streak' },
 ]
 
-const dashboardMissions = [
-  'Complete Unit 2',
-  'Revise Python basics',
-  'Take a 10-question quiz',
-]
-
-const dashboardActivities = [
+const initialDashboardActivities = [
   { title: 'Completed Python loops recap', time: '2h ago', accent: 'learning' },
   { title: 'Scored 88% on logic quiz', time: '5h ago', accent: 'quiz' },
   { title: 'Updated weekly study plan', time: 'Yesterday', accent: 'schedule' },
   { title: 'Reviewed recursion exercises', time: '2 days ago', accent: 'focus' },
+]
+
+const dashboardMissions = [
+  'Complete Unit 2',
+  'Revise Python basics',
+  'Take a 10-question quiz',
 ]
 
 const subjectData = [
@@ -114,38 +114,194 @@ const initialPlanner = {
   Sunday: [{ id: 7, subject: 'Weekly Revision', topic: 'Review & Recap', duration: 90 }],
 }
 
-const pythonQuizQuestions = [
-  {
-    question: 'Which of the following is a valid variable name in Python?',
-    options: ['2score', 'student-name', 'student_name', 'for'],
-    correctAnswer: 'student_name',
-    explanation: 'Variable names cannot begin with a number, and hyphens are not valid. Underscores are allowed, which makes student_name a correct Python identifier.',
-  },
-  {
-    question: 'What does a for loop in Python do?',
-    options: ['It defines a function', 'It repeats a block of code a fixed number of times', 'It stores data in a dictionary', 'It prints only one line'],
-    correctAnswer: 'It repeats a block of code a fixed number of times',
-    explanation: 'A for loop is commonly used when you know how many times you want to repeat an action, such as iterating over a list or a range of numbers.',
-  },
-  {
-    question: 'Which statement creates a Python list?',
-    options: ['numbers = {1, 2, 3}', 'numbers = [1, 2, 3]', 'numbers = (1, 2, 3)', 'numbers = "1, 2, 3"'],
-    correctAnswer: 'numbers = [1, 2, 3]',
-    explanation: 'Square brackets create a list in Python. Lists are ordered and can store multiple values in one variable.',
-  },
-  {
-    question: 'What is the purpose of a function in Python?',
-    options: ['To permanently delete a variable', 'To group reusable code', 'To compare two values', 'To create a list'],
-    correctAnswer: 'To group reusable code',
-    explanation: 'Functions let you organize code into reusable blocks, which makes programs easier to read, test, and maintain.',
-  },
-  {
-    question: 'What is the result of this Python condition: age >= 18?',
-    options: ['It always prints a message', 'It checks whether age is greater than or equal to 18', 'It creates a loop', 'It defines a list'],
-    correctAnswer: 'It checks whether age is greater than or equal to 18',
-    explanation: 'An if/else condition evaluates a true or false statement. In this case, it checks whether age is at least 18 before running a block of code.',
-  },
-]
+const quizQuestionBank = {
+  Python: [
+    {
+      question: 'Which of the following is a valid variable name in Python?',
+      options: ['2score', 'student-name', 'student_name', 'for'],
+      correctAnswer: 'student_name',
+      explanation: 'Variable names cannot begin with a number, and hyphens are not valid. Underscores are allowed, which makes student_name a correct Python identifier.',
+    },
+    {
+      question: 'What does a for loop in Python do?',
+      options: ['It defines a function', 'It repeats a block of code a fixed number of times', 'It stores data in a dictionary', 'It prints only one line'],
+      correctAnswer: 'It repeats a block of code a fixed number of times',
+      explanation: 'A for loop is commonly used when you know how many times you want to repeat an action, such as iterating over a list or a range of numbers.',
+    },
+    {
+      question: 'Which statement creates a Python list?',
+      options: ['numbers = {1, 2, 3}', 'numbers = [1, 2, 3]', 'numbers = (1, 2, 3)', 'numbers = "1, 2, 3"'],
+      correctAnswer: 'numbers = [1, 2, 3]',
+      explanation: 'Square brackets create a list in Python. Lists are ordered and can store multiple values in one variable.',
+    },
+    {
+      question: 'What is the purpose of a function in Python?',
+      options: ['To permanently delete a variable', 'To group reusable code', 'To compare two values', 'To create a list'],
+      correctAnswer: 'To group reusable code',
+      explanation: 'Functions let you organize code into reusable blocks, which makes programs easier to read, test, and maintain.',
+    },
+    {
+      question: 'What is the result of this Python condition: age >= 18?',
+      options: ['It always prints a message', 'It checks whether age is greater than or equal to 18', 'It creates a loop', 'It defines a list'],
+      correctAnswer: 'It checks whether age is greater than or equal to 18',
+      explanation: 'An if/else condition evaluates a true or false statement. In this case, it checks whether age is at least 18 before running a block of code.',
+    },
+    {
+      question: 'Which method converts a value to a string in Python?',
+      options: ['toString()', 'str()', 'parse()', 'convert()'],
+      correctAnswer: 'str()',
+      explanation: 'The str() function converts a value into its string representation.',
+    },
+    {
+      question: 'What does a dictionary store?',
+      options: ['Only numbers', 'Key-value pairs', 'A sequence of one item', 'Only strings'],
+      correctAnswer: 'Key-value pairs',
+      explanation: 'A dictionary stores data as key-value pairs, which makes values easy to access by name.',
+    },
+    {
+      question: 'Which of these is a Boolean value in Python?',
+      options: ['"true"', '0', 'True', 'None'],
+      correctAnswer: 'True',
+      explanation: 'Python uses True and False as Boolean values, which are capitalized.',
+    },
+    {
+      question: 'What is the output of print(2 + 3 * 4)?',
+      options: ['20', '14', '24', '10'],
+      correctAnswer: '14',
+      explanation: 'Python follows order of operations, so multiplication happens before addition.',
+    },
+    {
+      question: 'Which statement correctly checks if a value is equal to 10?',
+      options: ['if value = 10', 'if value == 10', 'if value === 10', 'if value := 10'],
+      correctAnswer: 'if value == 10',
+      explanation: 'Use == to compare equality in Python; = is assignment.',
+    },
+  ],
+  Mathematics: [
+    {
+      question: 'Solve for x: 2x + 6 = 14',
+      options: ['x = 2', 'x = 3', 'x = 4', 'x = 5'],
+      correctAnswer: 'x = 4',
+      explanation: 'Subtract 6 from both sides to get 2x = 8, then divide by 2 to get x = 4.',
+    },
+    {
+      question: 'What is 25% of 80?',
+      options: ['10', '20', '25', '40'],
+      correctAnswer: '20',
+      explanation: '25% means one quarter, and 80 divided by 4 equals 20.',
+    },
+    {
+      question: 'What is the value of 3²?',
+      options: ['6', '9', '12', '8'],
+      correctAnswer: '9',
+      explanation: '3² means 3 multiplied by itself, which is 9.',
+    },
+    {
+      question: 'Which fraction is equivalent to 0.5?',
+      options: ['1/4', '1/2', '2/3', '3/4'],
+      correctAnswer: '1/2',
+      explanation: '0.5 equals one-half, which is 1/2.',
+    },
+    {
+      question: 'If a fair coin is flipped once, what is the probability of getting heads?',
+      options: ['0.25', '0.5', '0.75', '1'],
+      correctAnswer: '0.5',
+      explanation: 'There are two equally likely outcomes, so the probability of heads is 1/2 or 0.5.',
+    },
+    {
+      question: 'Simplify: 3x + 2x',
+      options: ['3x', '2x', '5x', '6x'],
+      correctAnswer: '5x',
+      explanation: 'Like terms can be combined: 3x + 2x = 5x.',
+    },
+    {
+      question: 'What is the perimeter of a rectangle with length 6 and width 4?',
+      options: ['10', '12', '20', '24'],
+      correctAnswer: '20',
+      explanation: 'Perimeter is 2(l + w) = 2(6 + 4) = 20.',
+    },
+    {
+      question: 'Which angle is a right angle?',
+      options: ['45°', '90°', '120°', '180°'],
+      correctAnswer: '90°',
+      explanation: 'A right angle measures exactly 90 degrees.',
+    },
+    {
+      question: 'What is the mean of 4, 6, and 8?',
+      options: ['5', '6', '7', '8'],
+      correctAnswer: '6',
+      explanation: 'The mean is the sum divided by the number of values: (4 + 6 + 8) / 3 = 6.',
+    },
+    {
+      question: 'What is 7 × 8?',
+      options: ['42', '54', '56', '64'],
+      correctAnswer: '56',
+      explanation: '7 times 8 equals 56.',
+    },
+  ],
+  'Computer Fundamentals': [
+    {
+      question: 'What does CPU stand for?',
+      options: ['Central Processing Unit', 'Computer Power Utility', 'Central Program Unit', 'Control Processing Utility'],
+      correctAnswer: 'Central Processing Unit',
+      explanation: 'CPU stands for Central Processing Unit, which is the main processor of the computer.',
+    },
+    {
+      question: 'What is RAM mainly used for?',
+      options: ['Permanent data storage', 'Running active programs temporarily', 'Sending emails', 'Printing documents'],
+      correctAnswer: 'Running active programs temporarily',
+      explanation: 'RAM stores data temporarily while programs and tasks are being actively used.',
+    },
+    {
+      question: 'Which of these is an operating system?',
+      options: ['Windows', 'Excel', 'Chrome', 'CPU'],
+      correctAnswer: 'Windows',
+      explanation: 'Windows is an operating system that manages hardware and software on a computer.',
+    },
+    {
+      question: 'What does a network allow computers to do?',
+      options: ['Only store files', 'Communicate and share resources', 'Replace the CPU', 'Turn off the monitor'],
+      correctAnswer: 'Communicate and share resources',
+      explanation: 'Networks connect devices so they can communicate and share data or hardware resources.',
+    },
+    {
+      question: 'Which storage type is usually non-volatile?',
+      options: ['RAM', 'Cache', 'Hard drive', 'Register'],
+      correctAnswer: 'Hard drive',
+      explanation: 'A hard drive retains data even when the computer is powered off, unlike RAM.',
+    },
+    {
+      question: 'What is the purpose of an input device?',
+      options: ['To display output', 'To send data into the computer', 'To store software', 'To keep the system cool'],
+      correctAnswer: 'To send data into the computer',
+      explanation: 'Input devices like keyboards and mice allow the user to send information into the system.',
+    },
+    {
+      question: 'Which of these is an output device?',
+      options: ['Keyboard', 'Monitor', 'Mouse', 'Scanner'],
+      correctAnswer: 'Monitor',
+      explanation: 'A monitor displays information to the user, making it an output device.',
+    },
+    {
+      question: 'What does the internet rely on for communication?',
+      options: ['Only one device', 'A complex network of connected systems', 'Only USB ports', 'Only printers'],
+      correctAnswer: 'A complex network of connected systems',
+      explanation: 'The internet is a global network of connected computers and systems that exchange information.',
+    },
+    {
+      question: 'What is a database used for?',
+      options: ['To store and organize large amounts of data', 'To change the CPU speed', 'To remove memory', 'To replace an operating system'],
+      correctAnswer: 'To store and organize large amounts of data',
+      explanation: 'Databases help organize, query, and manage large collections of information efficiently.',
+    },
+    {
+      question: 'What does BIOS do?',
+      options: ['It stores user files permanently', 'It checks hardware when the computer starts', 'It runs the browser', 'It draws graphics on the screen'],
+      correctAnswer: 'It checks hardware when the computer starts',
+      explanation: 'BIOS initializes and checks basic hardware components during startup before the OS loads.',
+    },
+  ],
+}
 
 const defaultSettings = {
   studentName: 'Ava Carter',
@@ -195,7 +351,7 @@ function ProgressOverviewCard({ label, value, detail }) {
   )
 }
 
-function DashboardPage() {
+function DashboardPage({ stats, activities }) {
   return (
     <>
       <header className="topbar">
@@ -216,7 +372,7 @@ function DashboardPage() {
       </header>
 
       <section className="stats-grid" aria-label="Study statistics">
-        {dashboardStats.map((stat) => (
+        {stats.map((stat) => (
           <div key={stat.label} className="stat-card panel">
             <p>{stat.label}</p>
             <h3>{stat.value}</h3>
@@ -298,8 +454,8 @@ function DashboardPage() {
         </div>
 
         <div className="activity-list">
-          {dashboardActivities.map((item) => (
-            <div key={item.title} className="activity-item">
+          {activities.map((item) => (
+            <div key={`${item.title}-${item.time}`} className="activity-item">
               <div className={`activity-badge ${item.accent}`} />
               <div className="activity-copy">
                 <p>{item.title}</p>
@@ -1115,89 +1271,248 @@ function PlannerPage() {
   )
 }
 
-function QuizPage({ onNavigate }) {
-  const [questionIndex, setQuestionIndex] = useState(0)
-  const [score, setScore] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [showResult, setShowResult] = useState(false)
+function QuizPage({ onNavigate, onQuizComplete }) {
+  const [setup, setSetup] = useState({ subject: 'Python', questionCount: 10, difficulty: 'Easy' })
+  const [isStarted, setIsStarted] = useState(false)
+  const [questions, setQuestions] = useState([])
+  const [selectedAnswers, setSelectedAnswers] = useState([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState(10 * 60)
+  const [result, setResult] = useState(null)
 
-  const totalQuestions = pythonQuizQuestions.length
-  const question = pythonQuizQuestions[questionIndex]
-  const progressPercent = ((questionIndex + (submitted ? 1 : 0)) / totalQuestions) * 100
-  const isCorrect = selectedAnswer === question.correctAnswer
+  const totalQuestions = Number(setup.questionCount)
+  const currentQuestion = questions[currentIndex]
+  const selectedAnswer = selectedAnswers[currentIndex] || ''
 
-  const handleSubmit = () => {
-    if (!selectedAnswer || submitted) {
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  const getPerformanceMessage = (percentage) => {
+    if (percentage >= 90) return 'Excellent'
+    if (percentage >= 70) return 'Great job'
+    if (percentage >= 50) return 'Keep practicing'
+    return 'Needs more revision'
+  }
+
+  const finalizeQuiz = (timedOut = false) => {
+    if (!questions.length) {
       return
     }
 
-    if (selectedAnswer === question.correctAnswer) {
-      setScore((currentScore) => currentScore + 1)
+    let correctAnswers = 0
+    const review = questions.map((question, index) => {
+      const userAnswer = selectedAnswers[index] || 'No answer'
+      const isCorrect = userAnswer === question.correctAnswer
+      if (isCorrect) {
+        correctAnswers += 1
+      }
+
+      return {
+        ...question,
+        userAnswer,
+        isCorrect,
+      }
+    })
+
+    const percentage = Math.round((correctAnswers / questions.length) * 100)
+    const totalTime = 10 * 60
+    const usedSeconds = totalTime - timeRemaining
+
+    const resultSummary = {
+      subject: setup.subject,
+      difficulty: setup.difficulty,
+      totalQuestions: questions.length,
+      correctAnswers,
+      incorrectAnswers: questions.length - correctAnswers,
+      score: `${correctAnswers}/${questions.length}`,
+      percentage,
+      message: getPerformanceMessage(percentage),
+      timeUsed: formatTime(Math.max(0, usedSeconds)),
+      timedOut,
+      review,
     }
 
-    setSubmitted(true)
+    setResult(resultSummary)
+    onQuizComplete?.(resultSummary)
+  }
+
+  useEffect(() => {
+    if (!isStarted || result) {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setTimeRemaining((previousTime) => {
+        if (previousTime <= 1) {
+          window.clearInterval(timer)
+          finalizeQuiz(true)
+          return 0
+        }
+
+        return previousTime - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [isStarted, result, questions, selectedAnswers, setup.subject, setup.difficulty])
+
+  const startQuiz = () => {
+    const bank = quizQuestionBank[setup.subject] || []
+    const availableQuestions = [...bank].sort(() => Math.random() - 0.5).slice(0, totalQuestions)
+
+    setQuestions(availableQuestions)
+    setSelectedAnswers(Array(availableQuestions.length).fill(''))
+    setCurrentIndex(0)
+    setTimeRemaining(10 * 60)
+    setResult(null)
+    setIsStarted(true)
+  }
+
+  const handleQuestionSelect = (answer) => {
+    setSelectedAnswers((currentAnswers) => {
+      const nextAnswers = [...currentAnswers]
+      nextAnswers[currentIndex] = answer
+      return nextAnswers
+    })
   }
 
   const handleNext = () => {
-    if (!submitted) {
+    if (!selectedAnswer) {
       return
     }
 
-    if (questionIndex === totalQuestions - 1) {
-      setShowResult(true)
+    if (currentIndex === questions.length - 1) {
+      finalizeQuiz(false)
       return
     }
 
-    setQuestionIndex((currentIndex) => currentIndex + 1)
-    setSelectedAnswer('')
-    setSubmitted(false)
+    setCurrentIndex((currentValue) => currentValue + 1)
   }
 
   const restartQuiz = () => {
-    setQuestionIndex(0)
-    setScore(0)
-    setSelectedAnswer('')
-    setSubmitted(false)
-    setShowResult(false)
+    setIsStarted(false)
+    setQuestions([])
+    setSelectedAnswers([])
+    setCurrentIndex(0)
+    setTimeRemaining(10 * 60)
+    setResult(null)
   }
 
-  const percentage = Math.round((score / totalQuestions) * 100)
-  const motivationalMessage =
-    percentage >= 80
-      ? 'Excellent work! You have a strong grasp of the basics.'
-      : percentage >= 60
-        ? 'Nice job! A little more practice will make you even stronger.'
-        : percentage >= 40
-          ? 'Good effort! Review the explanations and try again.'
-          : 'Keep going! Each question is a step toward better understanding.'
+  if (!isStarted && !result) {
+    return (
+      <div className="page-shell quiz-page-shell">
+        <header className="page-header">
+          <div>
+            <p className="eyebrow">Quiz</p>
+            <h2>Quiz</h2>
+            <p className="page-header-subtitle">Challenge yourself with an offline practice session.</p>
+          </div>
+        </header>
 
-  if (showResult) {
+        <section className="panel quiz-setup-panel">
+          <div className="setup-form-grid">
+            <label>
+              <span>Choose Subject</span>
+              <select value={setup.subject} onChange={(event) => setSetup((currentSetup) => ({ ...currentSetup, subject: event.target.value }))}>
+                <option value="Python">Python</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Computer Fundamentals">Computer Fundamentals</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Number of Questions</span>
+              <select value={setup.questionCount} onChange={(event) => setSetup((currentSetup) => ({ ...currentSetup, questionCount: Number(event.target.value) }))}>
+                <option value={10}>10</option>
+                <option value={5}>5</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Difficulty</span>
+              <select value={setup.difficulty} onChange={(event) => setSetup((currentSetup) => ({ ...currentSetup, difficulty: event.target.value }))}>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+            </label>
+          </div>
+
+          <button type="button" className="action-button primary start-quiz-button" onClick={startQuiz}>
+            Start Quiz
+          </button>
+        </section>
+      </div>
+    )
+  }
+
+  if (result) {
     return (
       <div className="page-shell">
         <header className="page-header">
           <div>
-            <p className="eyebrow">AI Quiz</p>
+            <p className="eyebrow">Quiz</p>
             <h2>Quiz complete</h2>
           </div>
         </header>
 
         <section className="panel result-panel">
           <div className="result-score-ring">
-            <span>{score}/{totalQuestions}</span>
+            <span>{result.correctAnswers}/{result.totalQuestions}</span>
           </div>
 
-          <h3>{score} / {totalQuestions}</h3>
-          <p className="result-percentage">{percentage}% accuracy</p>
-          <p className="result-message">{motivationalMessage}</p>
+          <h3>{result.correctAnswers} / {result.totalQuestions}</h3>
+          <p className="result-percentage">{result.percentage}% accuracy</p>
+          <p className="result-message">{result.message}</p>
+
+          <div className="result-metrics">
+            <div>
+              <span>Correct Answers</span>
+              <strong>{result.correctAnswers}</strong>
+            </div>
+            <div>
+              <span>Incorrect Answers</span>
+              <strong>{result.incorrectAnswers}</strong>
+            </div>
+            <div>
+              <span>Time Used</span>
+              <strong>{result.timeUsed}</strong>
+            </div>
+          </div>
 
           <div className="result-actions">
             <button type="button" className="action-button primary" onClick={restartQuiz}>
-              Restart Quiz
+              Retake Quiz
             </button>
             <button type="button" className="action-button secondary" onClick={() => onNavigate('Dashboard')}>
               Back to Dashboard
             </button>
+          </div>
+
+          <div className="review-panel">
+            <div className="panel-heading compact review-header">
+              <p className="eyebrow">Review Answers</p>
+            </div>
+
+            <div className="review-list">
+              {result.review.map((item, index) => (
+                <div key={`${item.question}-${index}`} className={`review-item ${item.isCorrect ? 'correct' : 'incorrect'}`}>
+                  <p className="review-question">Q{index + 1}. {item.question}</p>
+                  <div className="review-answer-row">
+                    <span>Your answer:</span>
+                    <strong>{item.userAnswer}</strong>
+                  </div>
+                  <div className="review-answer-row">
+                    <span>Correct answer:</span>
+                    <strong>{item.correctAnswer}</strong>
+                  </div>
+                  <div className="review-status">{item.isCorrect ? 'Correct' : 'Incorrect'}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </div>
@@ -1208,56 +1523,46 @@ function QuizPage({ onNavigate }) {
     <div className="page-shell">
       <header className="page-header">
         <div>
-          <p className="eyebrow">AI Quiz</p>
-          <h2>AI Quiz</h2>
-          <p className="page-header-subtitle">Test your knowledge and track your progress.</p>
+          <p className="eyebrow">Quiz</p>
+          <h2>{setup.subject}</h2>
+          <p className="page-header-subtitle">Answer each question before moving on.</p>
         </div>
       </header>
 
       <section className="panel quiz-panel">
         <div className="quiz-header-row">
           <div>
-            <p className="quiz-subject-label">Selected subject</p>
-            <strong>Python</strong>
+            <p className="quiz-subject-label">Subject</p>
+            <strong>{setup.subject}</strong>
           </div>
-          <div className="quiz-score-box">Score: {score}</div>
+          <div className="quiz-timer-box">Time left: {formatTime(timeRemaining)}</div>
         </div>
 
         <div className="quiz-progress-wrapper" aria-label="Quiz progress">
           <div className="quiz-progress-track">
-            <div className="quiz-progress-fill" style={{ width: `${progressPercent}%` }} />
+            <div className="quiz-progress-fill" style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
           </div>
         </div>
 
         <div className="quiz-meta-row">
           <span>
-            Question {questionIndex + 1} of {totalQuestions}
+            Question {currentIndex + 1} of {questions.length}
           </span>
-          <span>{Math.round(progressPercent)}% complete</span>
+          <span>{setup.difficulty} Difficulty</span>
         </div>
 
-        <h3>{question.question}</h3>
+        <h3>{currentQuestion.question}</h3>
 
         <div className="options-list">
-          {question.options.map((option) => {
+          {currentQuestion.options.map((option) => {
             const isSelected = selectedAnswer === option
-            const isCorrectOption = submitted && option === question.correctAnswer
-            const isIncorrectOption = submitted && isSelected && option !== question.correctAnswer
 
             return (
               <button
                 key={option}
                 type="button"
-                className={[
-                  'option-button',
-                  isSelected ? 'selected' : '',
-                  isCorrectOption ? 'correct' : '',
-                  isIncorrectOption ? 'incorrect' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => !submitted && setSelectedAnswer(option)}
-                disabled={submitted}
+                className={`option-button ${isSelected ? 'selected' : ''}`}
+                onClick={() => handleQuestionSelect(option)}
               >
                 {option}
               </button>
@@ -1265,23 +1570,10 @@ function QuizPage({ onNavigate }) {
           })}
         </div>
 
-        {submitted && (
-          <div className={`quiz-feedback ${isCorrect ? 'success' : 'error'}`}>
-            <strong>{isCorrect ? 'Correct!' : 'Incorrect.'}</strong>
-            <p>{question.explanation}</p>
-          </div>
-        )}
-
         <div className="quiz-actions">
-          {!submitted ? (
-            <button type="button" className="action-button primary" onClick={handleSubmit} disabled={!selectedAnswer}>
-              Submit Answer
-            </button>
-          ) : (
-            <button type="button" className="action-button primary" onClick={handleNext}>
-              {questionIndex === totalQuestions - 1 ? 'View Result' : 'Next Question'}
-            </button>
-          )}
+          <button type="button" className="action-button primary" onClick={handleNext} disabled={!selectedAnswer}>
+            {currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next'}
+          </button>
         </div>
       </section>
     </div>
