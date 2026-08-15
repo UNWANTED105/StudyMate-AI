@@ -32,6 +32,8 @@ const dashboardMissions = [
 ]
 
 const SUBJECTS_STORAGE_KEY = 'studymate_subjects'
+const QUIZ_RESULTS_STORAGE_KEY = 'studymate_quiz_results'
+const STUDY_SESSION_HISTORY_KEY = 'studymate_session_history'
 
 const clampProgress = (value) => {
   const numericValue = Number(value)
@@ -194,6 +196,67 @@ const getTodayDate = () => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return today
+}
+
+const getThisWeekDateRange = () => {
+  const today = getTodayDate()
+  const dayOfWeek = today.getDay()
+  const startOfWeek = new Date(today)
+  startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setDate(startOfWeek.getDate() + 6)
+  return { start: startOfWeek, end: endOfWeek }
+}
+
+const getThisMonthDateRange = () => {
+  const today = getTodayDate()
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  return { start: startOfMonth, end: endOfMonth }
+}
+
+const isDateInRange = (date, start, end) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  dateObj.setHours(0, 0, 0, 0)
+  return dateObj >= start && dateObj <= end
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'No date'
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return dateString
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const getDayName = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+const getPeriodLabel = (period) => {
+  switch (period) {
+    case 'This Week':
+      return 'This Week'
+    case 'This Month':
+      return 'This Month'
+    case 'All Time':
+      return 'All Time'
+    default:
+      return 'This Week'
+  }
+}
+
+const getPeriodDateRange = (period) => {
+  switch (period) {
+    case 'This Week':
+      return getThisWeekDateRange()
+    case 'This Month':
+      return getThisMonthDateRange()
+    case 'All Time':
+      return { start: new Date(2000, 0, 1), end: new Date(2100, 11, 31) }
+    default:
+      return getThisWeekDateRange()
+  }
 }
 
 const getPlannerSummary = (plan) => {
@@ -1480,19 +1543,43 @@ function PlannerPage({ planner, setPlanner }) {
         return currentPlan
       }
 
-      return {
+      const updatedPlan = {
         ...currentPlan,
         tasks: currentPlan.tasks.map((task) => {
           if (task.id !== taskId) {
             return task
           }
 
+          const isNowCompleted = !task.completed
+
+          // Save session history if task is being marked complete
+          if (isNowCompleted && typeof window !== 'undefined') {
+            try {
+              const existingHistory = JSON.parse(window.localStorage.getItem(STUDY_SESSION_HISTORY_KEY) || '[]')
+              const session = {
+                id: `session-${Date.now()}`,
+                subject: task.subject,
+                topic: task.topic,
+                duration: task.duration,
+                type: task.type,
+                completedAt: new Date().toISOString(),
+                date: task.date,
+              }
+              const updatedHistory = [session, ...existingHistory]
+              window.localStorage.setItem(STUDY_SESSION_HISTORY_KEY, JSON.stringify(updatedHistory))
+            } catch (error) {
+              console.warn('Failed to save session history:', error)
+            }
+          }
+
           return {
             ...task,
-            completed: !task.completed,
+            completed: isNowCompleted,
           }
         }),
       }
+
+      return updatedPlan
     })
   }
 
@@ -1789,6 +1876,7 @@ function QuizPage({ onNavigate, onQuizComplete }) {
     const usedSeconds = QUIZ_DURATION - timeRemaining
 
     const resultSummary = {
+      id: `quiz-${Date.now()}`,
       subject: setup.subject,
       difficulty: setup.difficulty,
       totalQuestions: questions.length,
@@ -1799,7 +1887,19 @@ function QuizPage({ onNavigate, onQuizComplete }) {
       message: getPerformanceMessage(percentage),
       timeUsed: formatTime(Math.max(0, usedSeconds)),
       timedOut,
+      completedAt: new Date().toISOString(),
       review,
+    }
+
+    // Save quiz result to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const existingResults = JSON.parse(window.localStorage.getItem(QUIZ_RESULTS_STORAGE_KEY) || '[]')
+        const updatedResults = [resultSummary, ...existingResults]
+        window.localStorage.setItem(QUIZ_RESULTS_STORAGE_KEY, JSON.stringify(updatedResults))
+      } catch (error) {
+        console.warn('Failed to save quiz result:', error)
+      }
     }
 
     setResult(resultSummary)
@@ -2062,82 +2162,525 @@ function WeeklyStudyChart() {
   )
 }
 
-function ProgressPage({ subjects = [] }) {
-  const insightText =
-    'You are strongest in Python. Increasing Mathematics practice by 30 minutes per day could improve your overall progress.'
+function ProgressPage({ subjects = [], planner = null }) {
+  const [timePeriod, setTimePeriod] = useState('This Week')
   const liveSubjects = subjects.length > 0 ? subjects : buildDefaultSubjects()
+
+  // Load quiz results from localStorage
+  const quizResults = typeof window !== 'undefined' 
+    ? JSON.parse(window.localStorage.getItem(QUIZ_RESULTS_STORAGE_KEY) || '[]')
+    : []
+
+  // Load session history from localStorage
+  const sessionHistory = typeof window !== 'undefined'
+    ? JSON.parse(window.localStorage.getItem(STUDY_SESSION_HISTORY_KEY) || '[]')
+    : []
+
+  // Get date range for current period
+  const dateRange = getPeriodDateRange(timePeriod)
+
+  // ===== OVERALL PROGRESS =====
+  const plannerSummary = planner ? getPlannerSummary(planner) : null
+  const filteredPlannerSessions = planner && planner.tasks
+    ? planner.tasks.filter(task => isDateInRange(task.date, dateRange.start, dateRange.end) && task.completed)
+    : []
+  const plannerProgress = planner && plannerSummary && plannerSummary.totalSessions > 0
+    ? Math.round((plannerSummary.completedSessions / plannerSummary.totalSessions) * 100)
+    : 0
+  const averageSubjectProgress = liveSubjects.length > 0
+    ? Math.round(liveSubjects.reduce((sum, s) => sum + (Number(s.progress) || 0), 0) / liveSubjects.length)
+    : 0
+  const overallProgress = Math.max(plannerProgress, averageSubjectProgress)
+  const completedSessions = filteredPlannerSessions.length
+  const totalSessions = planner?.tasks?.filter(task => isDateInRange(task.date, dateRange.start, dateRange.end)).length || 0
+
+  // ===== QUIZ PERFORMANCE =====
+  const filteredQuizzes = quizResults.filter(quiz => isDateInRange(quiz.completedAt, dateRange.start, dateRange.end))
+  const quizAverage = filteredQuizzes.length > 0
+    ? Math.round(filteredQuizzes.reduce((sum, q) => sum + (Number(q.percentage) || 0), 0) / filteredQuizzes.length)
+    : 0
+  const bestQuizScore = filteredQuizzes.length > 0
+    ? Math.max(...filteredQuizzes.map(q => Number(q.percentage) || 0))
+    : 0
+  const lowestQuizScore = filteredQuizzes.length > 0
+    ? Math.min(...filteredQuizzes.map(q => Number(q.percentage) || 0))
+    : 0
+  const totalQuestionsAnswered = filteredQuizzes.reduce((sum, q) => sum + (Number(q.totalQuestions) || 0), 0)
+  const totalCorrectAnswers = filteredQuizzes.reduce((sum, q) => sum + (Number(q.correctAnswers) || 0), 0)
+  const quizAccuracy = totalQuestionsAnswered > 0
+    ? Math.round((totalCorrectAnswers / totalQuestionsAnswered) * 100)
+    : 0
+
+  // ===== STUDY TIME =====
+  const filteredSessions = sessionHistory.filter(session => isDateInRange(session.completedAt, dateRange.start, dateRange.end))
+  const totalStudyMinutes = filteredSessions.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)
+  const totalStudyHours = Math.floor(totalStudyMinutes / 60)
+  const remainingMinutes = totalStudyMinutes % 60
+  const studyTimeDisplay = totalStudyHours > 0 
+    ? `${totalStudyHours} hr ${remainingMinutes > 0 ? remainingMinutes + ' min' : ''}`
+    : totalStudyMinutes > 0 
+    ? `${totalStudyMinutes} min`
+    : 'No sessions'
+  
+  const avgDailyStudyMinutes = filteredSessions.length > 0
+    ? Math.round(totalStudyMinutes / 7)
+    : 0
+
+  const todayKey = toInputDateValue(getTodayDate())
+  const todaySessions = sessionHistory.filter(s => s.date === todayKey)
+  const todayStudyMinutes = todaySessions.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)
+
+  // ===== STUDY STREAK =====
+  const calculateStreak = () => {
+    const uniqueDates = [...new Set(sessionHistory.map(s => s.date))].sort().reverse()
+    if (uniqueDates.length === 0) return { current: 0, longest: 0 }
+
+    let currentStreak = 0
+    let longestStreak = 0
+    let tempStreak = 1
+    const today = getTodayDate()
+    const todayDateStr = toInputDateValue(today)
+
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const currentDate = new Date(uniqueDates[i])
+      const nextDate = i < uniqueDates.length - 1 ? new Date(uniqueDates[i + 1]) : null
+
+      if (nextDate) {
+        const diffDays = (currentDate - nextDate) / (1000 * 60 * 60 * 24)
+        if (diffDays === 1) {
+          tempStreak += 1
+        } else {
+          longestStreak = Math.max(longestStreak, tempStreak)
+          tempStreak = 1
+        }
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak)
+      }
+
+      // Check if this is part of current streak
+      if (i === 0 && (uniqueDates[i] === todayDateStr || new Date(uniqueDates[i]).getTime() === today.getTime() - 86400000)) {
+        currentStreak = tempStreak
+      }
+    }
+
+    return { current: currentStreak, longest: Math.max(longestStreak, tempStreak) }
+  }
+
+  const { current: currentStreak, longest: longestStreak } = calculateStreak()
+
+  // ===== ACHIEVEMENTS =====
+  const calculateAchievements = () => {
+    const achievements = []
+
+    if (filteredQuizzes.length > 0) {
+      achievements.push({ icon: '✓', title: 'First Quiz Completed', detail: 'Started your first quiz' })
+    }
+    if (filteredQuizzes.length >= 5) {
+      achievements.push({ icon: '🎯', title: '5 Quizzes Completed', detail: 'Keep practicing' })
+    }
+    if (liveSubjects.some(s => Number(s.progress) >= 50)) {
+      achievements.push({ icon: '📚', title: 'Subject Milestone 50%', detail: 'Halfway there' })
+    }
+    if (liveSubjects.some(s => Number(s.progress) === 100)) {
+      achievements.push({ icon: '⭐', title: 'Subject Completed', detail: 'Mastered a subject' })
+    }
+    if (currentStreak >= 7) {
+      achievements.push({ icon: '🔥', title: '7-Day Streak', detail: 'Amazing consistency' })
+    }
+    if (filteredSessions.length >= 10) {
+      achievements.push({ icon: '💪', title: '10 Sessions Completed', detail: 'Strong momentum' })
+    }
+    if (quizAverage >= 80) {
+      achievements.push({ icon: '🏆', title: '80%+ Quiz Average', detail: 'Excellent performance' })
+    }
+
+    return achievements
+  }
+
+  const achievements = calculateAchievements()
+
+  // ===== WEEKLY ACTIVITY =====
+  const getWeeklyActivity = () => {
+    const week = []
+    const today = getTodayDate()
+    const startOfWeek = new Date(today)
+    const dayOfWeek = today.getDay()
+    startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(startOfWeek)
+      dayDate.setDate(startOfWeek.getDate() + i)
+      const dateStr = toInputDateValue(dayDate)
+      const daySessions = sessionHistory.filter(s => s.date === dateStr)
+      const dayQuizzes = quizResults.filter(q => isDateInRange(q.completedAt, dayDate, dayDate))
+
+      const totalMinutes = daySessions.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)
+      week.push({
+        day: dayNames[i],
+        date: dateStr,
+        sessions: daySessions.length,
+        minutes: totalMinutes,
+        quizzes: dayQuizzes.length,
+      })
+    }
+
+    return week
+  }
+
+  const weeklyActivity = getWeeklyActivity()
+  const maxMinutesInWeek = Math.max(...weeklyActivity.map(d => d.minutes), 60)
+
+  // ===== RECENT ACTIVITY =====
+  const getRecentActivity = () => {
+    const activities = []
+
+    // Add recent quiz completions
+    quizResults.slice(0, 5).forEach(quiz => {
+      activities.push({
+        type: 'quiz',
+        title: `Scored ${quiz.percentage}% on ${quiz.subject} Quiz`,
+        timestamp: quiz.completedAt,
+        accent: 'quiz',
+      })
+    })
+
+    // Add recent session completions
+    sessionHistory.slice(0, 5).forEach(session => {
+      activities.push({
+        type: 'session',
+        title: `Completed ${session.subject} - ${session.topic}`,
+        timestamp: session.completedAt,
+        accent: 'learning',
+      })
+    })
+
+    // Add subject topic completions
+    liveSubjects.forEach(subject => {
+      subject.topics?.filter(t => t.completed).forEach((topic, idx) => {
+        if (idx < 2) {
+          activities.push({
+            type: 'topic',
+            title: `Completed "${topic.name}" in ${subject.name}`,
+            timestamp: subject.createdAt,
+            accent: 'focus',
+          })
+        }
+      })
+    })
+
+    // Sort by most recent and return top 6
+    return activities
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 6)
+      .map((activity, idx) => ({
+        ...activity,
+        time: idx === 0 ? 'Just now' : idx === 1 ? '1h ago' : idx === 2 ? '2h ago' : `${idx} hours ago`,
+      }))
+  }
+
+  const recentActivity = getRecentActivity()
+
+  // ===== GENERATE INSIGHTS =====
+  const generateInsights = () => {
+    if (liveSubjects.length === 0) {
+      return 'Start adding subjects to track your learning progress.'
+    }
+
+    const weakestSubject = liveSubjects.reduce((min, s) => 
+      (Number(s.progress) || 0) < (Number(min.progress) || 0) ? s : min
+    )
+    const strongestSubject = liveSubjects.reduce((max, s) => 
+      (Number(s.progress) || 0) > (Number(max.progress) || 0) ? s : max
+    )
+
+    if (quizAverage < 60) {
+      return `Your quiz average is ${quizAverage}%. Focus on ${weakestSubject.name} to improve overall performance.`
+    }
+
+    if (currentStreak === 0) {
+      return `You have completed ${filteredSessions.length} sessions this period. Try to maintain a consistent study streak.`
+    }
+
+    return `You are strongest in ${strongestSubject.name}. ${weakestSubject.name} needs more attention to reach your learning goals.`
+  }
 
   return (
     <div className="page-shell progress-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Progress</p>
-          <h2>Your Progress</h2>
-          <p className="page-header-subtitle">See how your study habits are improving over time.</p>
+          <h2>Your Learning Journey</h2>
+          <p className="page-header-subtitle">Track your growth and celebrate your achievements.</p>
         </div>
       </header>
 
-      <section className="stats-grid analytics-grid" aria-label="Progress overview cards">
-        <ProgressOverviewCard label="Overall Progress" value="68%" detail="This week" />
-        <ProgressOverviewCard label="Quiz Average" value="76%" detail="Strong performance" />
-        <ProgressOverviewCard label="Study Streak" value="5 days" detail="Keep it going" />
-        <ProgressOverviewCard label="Total Study Time" value="14.5 hrs" detail="Across all subjects" />
-      </section>
-
-      <div className="progress-content-grid">
-        <section className="panel progress-panel">
-          <div className="panel-heading compact">
-            <p className="eyebrow">Weekly study activity</p>
-          </div>
-
-          <WeeklyStudyChart />
-        </section>
-
-        <section className="panel progress-panel">
-          <div className="panel-heading compact">
-            <p className="eyebrow">Subject progress</p>
-          </div>
-
-          {liveSubjects.map((subject) => (
-            <div key={subject.id || subject.name} className="subject-item">
-              <div className="subject-row">
-                <span>{subject.name}</span>
-                <strong>{subject.progress}%</strong>
-              </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${subject.progress}%` }} />
-              </div>
-            </div>
+      {/* Time Period Filter */}
+      <div className="progress-filter-row">
+        <span className="filter-label">View by:</span>
+        <div className="filter-buttons">
+          {['This Week', 'This Month', 'All Time'].map(period => (
+            <button
+              key={period}
+              type="button"
+              className={`filter-button ${timePeriod === period ? 'active' : ''}`}
+              onClick={() => setTimePeriod(period)}
+            >
+              {period}
+            </button>
           ))}
-        </section>
+        </div>
       </div>
 
-      <section className="panel achievement-panel">
-        <div className="panel-heading compact">
-          <p className="eyebrow">Achievements</p>
-        </div>
-
-        <div className="achievement-grid">
-          {achievementCards.map((achievement) => (
-            <div key={achievement.title} className="achievement-card">
-              <div className="achievement-icon">{achievement.icon}</div>
-              <div>
-                <h3>{achievement.title}</h3>
-                <p>{achievement.detail}</p>
-              </div>
+      {/* Overall Progress Stats */}
+      {filteredPlannerSessions.length > 0 || filteredQuizzes.length > 0 || filteredSessions.length > 0 ? (
+        <section className="stats-grid analytics-grid" aria-label="Progress overview cards">
+          <ProgressOverviewCard
+            label="Overall Progress"
+            value={`${overallProgress}%`}
+            detail={`${getPeriodLabel(timePeriod)}`}
+          />
+          {quizResults.length > 0 ? (
+            <ProgressOverviewCard
+              label="Quiz Average"
+              value={`${quizAverage}%`}
+              detail={filteredQuizzes.length > 0 ? `${filteredQuizzes.length} quizzes` : 'No quizzes yet'}
+            />
+          ) : (
+            <div className="stat-card panel progress-overview-card empty-state">
+              <p>Quiz Average</p>
+              <h3>—</h3>
+              <span>No quiz attempts yet</span>
             </div>
-          ))}
+          )}
+          {sessionHistory.length > 0 ? (
+            <ProgressOverviewCard
+              label="Study Time"
+              value={studyTimeDisplay}
+              detail={`${filteredSessions.length} sessions`}
+            />
+          ) : (
+            <div className="stat-card panel progress-overview-card empty-state">
+              <p>Study Time</p>
+              <h3>—</h3>
+              <span>No study sessions yet</span>
+            </div>
+          )}
+          {sessionHistory.length > 0 ? (
+            <ProgressOverviewCard
+              label="Study Streak"
+              value={`${currentStreak} days`}
+              detail={`Best: ${longestStreak} days`}
+            />
+          ) : (
+            <div className="stat-card panel progress-overview-card empty-state">
+              <p>Study Streak</p>
+              <h3>—</h3>
+              <span>Complete your first session</span>
+            </div>
+          )}
+        </section>
+      ) : (
+        <div className="panel progress-empty-state">
+          <p>No data available for {getPeriodLabel(timePeriod).toLowerCase()}.</p>
+          <span>Complete quizzes, study sessions, and subjects to see your progress here.</span>
         </div>
-      </section>
+      )}
 
-      <section className="panel insight-panel">
+      {/* Quiz Performance Section */}
+      {filteredQuizzes.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Quiz Performance</p>
+          </div>
+
+          <div className="quiz-stats-grid">
+            <div className="quiz-stat-card">
+              <span>Quiz Average</span>
+              <strong>{quizAverage}%</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Quizzes Taken</span>
+              <strong>{filteredQuizzes.length}</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Best Score</span>
+              <strong>{bestQuizScore}%</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Lowest Score</span>
+              <strong>{lowestQuizScore}%</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Total Questions</span>
+              <strong>{totalQuestionsAnswered}</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Correct Answers</span>
+              <strong>{totalCorrectAnswers}</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Accuracy</span>
+              <strong>{quizAccuracy}%</strong>
+            </div>
+            <div className="quiz-stat-card">
+              <span>Difficulty Level</span>
+              <strong>{filteredQuizzes[0]?.difficulty || '—'}</strong>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Subject Performance Section */}
+      {liveSubjects.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Subject Performance</p>
+          </div>
+
+          <div className="subjects-progress-list">
+            {liveSubjects.map((subject) => {
+              const status = getSubjectStatus(subject)
+              return (
+                <div key={subject.id} className="subject-progress-item">
+                  <div className="subject-progress-header">
+                    <div>
+                      <h4>{subject.name}</h4>
+                      <span className={`status-badge ${status.toLowerCase().replace(' ', '-')}`}>
+                        {status}
+                      </span>
+                    </div>
+                    <strong>{subject.progress}%</strong>
+                  </div>
+
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${subject.progress}%` }} />
+                  </div>
+
+                  <div className="subject-progress-details">
+                    <span>
+                      {subject.topics?.filter(t => t.completed).length || 0}/{subject.topics?.length || 0} topics
+                    </span>
+                    <span>Target: {subject.target}%</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Study Time Breakdown */}
+      {filteredSessions.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Study Time Breakdown</p>
+          </div>
+
+          <div className="study-time-stats">
+            <div className="time-stat-card">
+              <span>Total Study Time</span>
+              <strong>{totalStudyHours}h {remainingMinutes}m</strong>
+            </div>
+            <div className="time-stat-card">
+              <span>Average Daily</span>
+              <strong>{Math.floor(avgDailyStudyMinutes / 60)}h {avgDailyStudyMinutes % 60}m</strong>
+            </div>
+            <div className="time-stat-card">
+              <span>Today's Study Time</span>
+              <strong>{Math.floor(todayStudyMinutes / 60)}h {todayStudyMinutes % 60}m</strong>
+            </div>
+            <div className="time-stat-card">
+              <span>Total Sessions</span>
+              <strong>{filteredSessions.length}</strong>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Weekly Activity Chart */}
+      {sessionHistory.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Weekly Activity</p>
+          </div>
+
+          <div className="weekly-activity-chart" aria-label="Weekly study activity">
+            {weeklyActivity.map(({ day, sessions, minutes, quizzes }) => (
+              <div key={day} className="activity-day-column">
+                <div className="activity-bar-wrap">
+                  {minutes > 0 && (
+                    <>
+                      <span className="activity-value">{Math.floor(minutes / 60)}h</span>
+                      <div className="activity-bar" style={{ height: `${(minutes / maxMinutesInWeek) * 100}%` }} />
+                    </>
+                  )}
+                </div>
+                <span className="activity-label">{day.slice(0, 3)}</span>
+                {(sessions > 0 || quizzes > 0) && (
+                  <span className="activity-meta">
+                    {sessions > 0 && <small>{sessions}s</small>}
+                    {quizzes > 0 && <small> {quizzes}q</small>}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Achievements */}
+      {achievements.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Achievements Earned</p>
+          </div>
+
+          <div className="achievements-list">
+            {achievements.map((achievement) => (
+              <div key={achievement.title} className="achievement-item">
+                <div className="achievement-icon">{achievement.icon}</div>
+                <div className="achievement-text">
+                  <h4>{achievement.title}</h4>
+                  <p>{achievement.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Activity Feed */}
+      {recentActivity.length > 0 && (
+        <section className="panel progress-panel">
+          <div className="panel-heading compact">
+            <p className="eyebrow">Recent Activity</p>
+          </div>
+
+          <div className="activity-feed-list">
+            {recentActivity.map((activity, idx) => (
+              <div key={`${activity.type}-${idx}`} className="activity-feed-item">
+                <div className={`activity-badge ${activity.accent}`} />
+                <div className="activity-copy">
+                  <p>{activity.title}</p>
+                  <span>{activity.time}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Learning Insights */}
+      <section className="panel progress-panel">
         <div className="panel-heading compact">
-          <p className="eyebrow">Learning insights</p>
+          <p className="eyebrow">Learning Insights</p>
         </div>
 
         <div className="insight-card">
-          <span className="insight-badge">AI Insight</span>
-          <p>{insightText}</p>
+          <span className="insight-badge">Insight</span>
+          <p>{generateInsights()}</p>
         </div>
       </section>
     </div>
@@ -2456,7 +2999,7 @@ function App() {
       case 'Quiz':
         return <QuizPage onNavigate={setActivePage} onQuizComplete={handleQuizComplete} />
       case 'Progress':
-        return <ProgressPage subjects={subjects} />
+        return <ProgressPage subjects={subjects} planner={planner} />
       case 'Settings':
         return <SettingsPage settings={settings} setSettings={setSettings} onSave={setSettings} />
       default:
