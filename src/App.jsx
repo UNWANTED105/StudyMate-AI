@@ -116,190 +116,40 @@ const initialPlanner = {
 
 const quizQuestionBank = {
   Python: [
-    {
-      question: 'Which of the following is a valid variable name in Python?',
-      options: ['2score', 'student-name', 'student_name', 'for'],
-      correctAnswer: 'student_name',
-      explanation: 'Variable names cannot begin with a number, and hyphens are not valid. Underscores are allowed, which makes student_name a correct Python identifier.',
-    },
-    {
-      question: 'What does a for loop in Python do?',
-      options: ['It defines a function', 'It repeats a block of code a fixed number of times', 'It stores data in a dictionary', 'It prints only one line'],
-      correctAnswer: 'It repeats a block of code a fixed number of times',
-      explanation: 'A for loop is commonly used when you know how many times you want to repeat an action, such as iterating over a list or a range of numbers.',
-    },
-    {
-      question: 'Which statement creates a Python list?',
-      options: ['numbers = {1, 2, 3}', 'numbers = [1, 2, 3]', 'numbers = (1, 2, 3)', 'numbers = "1, 2, 3"'],
-      correctAnswer: 'numbers = [1, 2, 3]',
-      explanation: 'Square brackets create a list in Python. Lists are ordered and can store multiple values in one variable.',
-    },
-    {
-      question: 'What is the purpose of a function in Python?',
-      options: ['To permanently delete a variable', 'To group reusable code', 'To compare two values', 'To create a list'],
-      correctAnswer: 'To group reusable code',
-      explanation: 'Functions let you organize code into reusable blocks, which makes programs easier to read, test, and maintain.',
-    },
-    {
-      question: 'What is the result of this Python condition: age >= 18?',
-      options: ['It always prints a message', 'It checks whether age is greater than or equal to 18', 'It creates a loop', 'It defines a list'],
-      correctAnswer: 'It checks whether age is greater than or equal to 18',
-      explanation: 'An if/else condition evaluates a true or false statement. In this case, it checks whether age is at least 18 before running a block of code.',
-    },
-    {
-      question: 'Which method converts a value to a string in Python?',
-      options: ['toString()', 'str()', 'parse()', 'convert()'],
-      correctAnswer: 'str()',
-      explanation: 'The str() function converts a value into its string representation.',
-    },
-    {
-      question: 'What does a dictionary store?',
-      options: ['Only numbers', 'Key-value pairs', 'A sequence of one item', 'Only strings'],
-      correctAnswer: 'Key-value pairs',
-      explanation: 'A dictionary stores data as key-value pairs, which makes values easy to access by name.',
-    },
-    {
-      question: 'Which of these is a Boolean value in Python?',
-      options: ['"true"', '0', 'True', 'None'],
-      correctAnswer: 'True',
-      explanation: 'Python uses True and False as Boolean values, which are capitalized.',
-    },
-    {
-      question: 'What is the output of print(2 + 3 * 4)?',
-      options: ['20', '14', '24', '10'],
-      correctAnswer: '14',
-      explanation: 'Python follows order of operations, so multiplication happens before addition.',
-    },
-    {
-      question: 'Which statement correctly checks if a value is equal to 10?',
-      options: ['if value = 10', 'if value == 10', 'if value === 10', 'if value := 10'],
-      correctAnswer: 'if value == 10',
-      explanation: 'Use == to compare equality in Python; = is assignment.',
-    },
+    { id: 1, question: 'Which of the following is a valid variable name in Python?', options: ['2score', 'student-name', 'student_name', 'for'], correctAnswer: 'student_name', explanation: 'Variable names cannot begin with a number, and hyphens are not valid. Underscores are allowed, which makes student_name a correct Python identifier.' },
+    { id: 2, question: 'What does a for loop in Python do?', options: ['It defines a function', 'It repeats a block of code a fixed number of times', 'It stores data in a dictionary', 'It prints only one line'], correctAnswer: 'It repeats a block of code a fixed number of times', explanation: 'A for loop is commonly used when you know how many times you want to repeat an action, such as iterating over a list or a range of numbers.' },
+    { id: 3, question: 'Which statement creates a Python list?', options: ['numbers = {1, 2, 3}', 'numbers = [1, 2, 3]', 'numbers = (1, 2, 3)', 'numbers = "1, 2, 3"'], correctAnswer: 'numbers = [1, 2, 3]', explanation: 'Square brackets create a list in Python. Lists are ordered and can store multiple values in one variable.' },
+    { id: 4, question: 'What is the purpose of a function in Python?', options: ['To permanently delete a variable', 'To group reusable code', 'To compare two values', 'To create a list'], correctAnswer: 'To group reusable code', explanation: 'Functions let you organize code into reusable blocks, which makes programs easier to read, test, and maintain.' },
+    { id: 5, question: 'What is the result of this Python condition: age >= 18?', options: ['It always prints a message', 'It checks whether age is greater than or equal to 18', 'It creates a loop', 'It defines a list'], correctAnswer: 'It checks whether age is greater than or equal to 18', explanation: 'An if/else condition evaluates a true or false statement. In this case, it checks whether age is at least 18 before running a block of code.' },
+    { id: 6, question: 'Which method converts a value to a string in Python?', options: ['toString()', 'str()', 'parse()', 'convert()'], correctAnswer: 'str()', explanation: 'The str() function converts a value into its string representation.' },
+    { id: 7, question: 'What does a dictionary store?', options: ['Only numbers', 'Key-value pairs', 'A sequence of one item', 'Only strings'], correctAnswer: 'Key-value pairs', explanation: 'A dictionary stores data as key-value pairs, which makes values easy to access by name.' },
+    { id: 8, question: 'Which of these is a Boolean value in Python?', options: ['"true"', '0', 'True', 'None'], correctAnswer: 'True', explanation: 'Python uses True and False as Boolean values, which are capitalized.' },
+    { id: 9, question: 'What is the output of print(2 + 3 * 4)?', options: ['20', '14', '24', '10'], correctAnswer: '14', explanation: 'Python follows order of operations, so multiplication happens before addition.' },
+    { id: 10, question: 'Which statement correctly checks if a value is equal to 10?', options: ['if value = 10', 'if value == 10', 'if value === 10', 'if value := 10'], correctAnswer: 'if value == 10', explanation: 'Use == to compare equality in Python; = is assignment.' },
   ],
   Mathematics: [
-    {
-      question: 'Solve for x: 2x + 6 = 14',
-      options: ['x = 2', 'x = 3', 'x = 4', 'x = 5'],
-      correctAnswer: 'x = 4',
-      explanation: 'Subtract 6 from both sides to get 2x = 8, then divide by 2 to get x = 4.',
-    },
-    {
-      question: 'What is 25% of 80?',
-      options: ['10', '20', '25', '40'],
-      correctAnswer: '20',
-      explanation: '25% means one quarter, and 80 divided by 4 equals 20.',
-    },
-    {
-      question: 'What is the value of 3²?',
-      options: ['6', '9', '12', '8'],
-      correctAnswer: '9',
-      explanation: '3² means 3 multiplied by itself, which is 9.',
-    },
-    {
-      question: 'Which fraction is equivalent to 0.5?',
-      options: ['1/4', '1/2', '2/3', '3/4'],
-      correctAnswer: '1/2',
-      explanation: '0.5 equals one-half, which is 1/2.',
-    },
-    {
-      question: 'If a fair coin is flipped once, what is the probability of getting heads?',
-      options: ['0.25', '0.5', '0.75', '1'],
-      correctAnswer: '0.5',
-      explanation: 'There are two equally likely outcomes, so the probability of heads is 1/2 or 0.5.',
-    },
-    {
-      question: 'Simplify: 3x + 2x',
-      options: ['3x', '2x', '5x', '6x'],
-      correctAnswer: '5x',
-      explanation: 'Like terms can be combined: 3x + 2x = 5x.',
-    },
-    {
-      question: 'What is the perimeter of a rectangle with length 6 and width 4?',
-      options: ['10', '12', '20', '24'],
-      correctAnswer: '20',
-      explanation: 'Perimeter is 2(l + w) = 2(6 + 4) = 20.',
-    },
-    {
-      question: 'Which angle is a right angle?',
-      options: ['45°', '90°', '120°', '180°'],
-      correctAnswer: '90°',
-      explanation: 'A right angle measures exactly 90 degrees.',
-    },
-    {
-      question: 'What is the mean of 4, 6, and 8?',
-      options: ['5', '6', '7', '8'],
-      correctAnswer: '6',
-      explanation: 'The mean is the sum divided by the number of values: (4 + 6 + 8) / 3 = 6.',
-    },
-    {
-      question: 'What is 7 × 8?',
-      options: ['42', '54', '56', '64'],
-      correctAnswer: '56',
-      explanation: '7 times 8 equals 56.',
-    },
+    { id: 1, question: 'Solve for x: 2x + 6 = 14', options: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], correctAnswer: 'x = 4', explanation: 'Subtract 6 from both sides to get 2x = 8, then divide by 2 to get x = 4.' },
+    { id: 2, question: 'What is 25% of 80?', options: ['10', '20', '25', '40'], correctAnswer: '20', explanation: '25% means one quarter, and 80 divided by 4 equals 20.' },
+    { id: 3, question: 'What is the value of 3²?', options: ['6', '9', '12', '8'], correctAnswer: '9', explanation: '3² means 3 multiplied by itself, which is 9.' },
+    { id: 4, question: 'Which fraction is equivalent to 0.5?', options: ['1/4', '1/2', '2/3', '3/4'], correctAnswer: '1/2', explanation: '0.5 equals one-half, which is 1/2.' },
+    { id: 5, question: 'If a fair coin is flipped once, what is the probability of getting heads?', options: ['0.25', '0.5', '0.75', '1'], correctAnswer: '0.5', explanation: 'There are two equally likely outcomes, so the probability of heads is 1/2 or 0.5.' },
+    { id: 6, question: 'Simplify: 3x + 2x', options: ['3x', '2x', '5x', '6x'], correctAnswer: '5x', explanation: 'Like terms can be combined: 3x + 2x = 5x.' },
+    { id: 7, question: 'What is the perimeter of a rectangle with length 6 and width 4?', options: ['10', '12', '20', '24'], correctAnswer: '20', explanation: 'Perimeter is 2(l + w) = 2(6 + 4) = 20.' },
+    { id: 8, question: 'Which angle is a right angle?', options: ['45°', '90°', '120°', '180°'], correctAnswer: '90°', explanation: 'A right angle measures exactly 90 degrees.' },
+    { id: 9, question: 'What is the mean of 4, 6, and 8?', options: ['5', '6', '7', '8'], correctAnswer: '6', explanation: 'The mean is the sum divided by the number of values: (4 + 6 + 8) / 3 = 6.' },
+    { id: 10, question: 'What is 7 × 8?', options: ['42', '54', '56', '64'], correctAnswer: '56', explanation: '7 times 8 equals 56.' },
   ],
   'Computer Fundamentals': [
-    {
-      question: 'What does CPU stand for?',
-      options: ['Central Processing Unit', 'Computer Power Utility', 'Central Program Unit', 'Control Processing Utility'],
-      correctAnswer: 'Central Processing Unit',
-      explanation: 'CPU stands for Central Processing Unit, which is the main processor of the computer.',
-    },
-    {
-      question: 'What is RAM mainly used for?',
-      options: ['Permanent data storage', 'Running active programs temporarily', 'Sending emails', 'Printing documents'],
-      correctAnswer: 'Running active programs temporarily',
-      explanation: 'RAM stores data temporarily while programs and tasks are being actively used.',
-    },
-    {
-      question: 'Which of these is an operating system?',
-      options: ['Windows', 'Excel', 'Chrome', 'CPU'],
-      correctAnswer: 'Windows',
-      explanation: 'Windows is an operating system that manages hardware and software on a computer.',
-    },
-    {
-      question: 'What does a network allow computers to do?',
-      options: ['Only store files', 'Communicate and share resources', 'Replace the CPU', 'Turn off the monitor'],
-      correctAnswer: 'Communicate and share resources',
-      explanation: 'Networks connect devices so they can communicate and share data or hardware resources.',
-    },
-    {
-      question: 'Which storage type is usually non-volatile?',
-      options: ['RAM', 'Cache', 'Hard drive', 'Register'],
-      correctAnswer: 'Hard drive',
-      explanation: 'A hard drive retains data even when the computer is powered off, unlike RAM.',
-    },
-    {
-      question: 'What is the purpose of an input device?',
-      options: ['To display output', 'To send data into the computer', 'To store software', 'To keep the system cool'],
-      correctAnswer: 'To send data into the computer',
-      explanation: 'Input devices like keyboards and mice allow the user to send information into the system.',
-    },
-    {
-      question: 'Which of these is an output device?',
-      options: ['Keyboard', 'Monitor', 'Mouse', 'Scanner'],
-      correctAnswer: 'Monitor',
-      explanation: 'A monitor displays information to the user, making it an output device.',
-    },
-    {
-      question: 'What does the internet rely on for communication?',
-      options: ['Only one device', 'A complex network of connected systems', 'Only USB ports', 'Only printers'],
-      correctAnswer: 'A complex network of connected systems',
-      explanation: 'The internet is a global network of connected computers and systems that exchange information.',
-    },
-    {
-      question: 'What is a database used for?',
-      options: ['To store and organize large amounts of data', 'To change the CPU speed', 'To remove memory', 'To replace an operating system'],
-      correctAnswer: 'To store and organize large amounts of data',
-      explanation: 'Databases help organize, query, and manage large collections of information efficiently.',
-    },
-    {
-      question: 'What does BIOS do?',
-      options: ['It stores user files permanently', 'It checks hardware when the computer starts', 'It runs the browser', 'It draws graphics on the screen'],
-      correctAnswer: 'It checks hardware when the computer starts',
-      explanation: 'BIOS initializes and checks basic hardware components during startup before the OS loads.',
-    },
+    { id: 1, question: 'What does CPU stand for?', options: ['Central Processing Unit', 'Computer Power Utility', 'Central Program Unit', 'Control Processing Utility'], correctAnswer: 'Central Processing Unit', explanation: 'CPU stands for Central Processing Unit, which is the main processor of the computer.' },
+    { id: 2, question: 'What is RAM mainly used for?', options: ['Permanent data storage', 'Running active programs temporarily', 'Sending emails', 'Printing documents'], correctAnswer: 'Running active programs temporarily', explanation: 'RAM stores data temporarily while programs and tasks are being actively used.' },
+    { id: 3, question: 'Which of these is an operating system?', options: ['Windows', 'Excel', 'Chrome', 'CPU'], correctAnswer: 'Windows', explanation: 'Windows is an operating system that manages hardware and software on a computer.' },
+    { id: 4, question: 'What does a network allow computers to do?', options: ['Only store files', 'Communicate and share resources', 'Replace the CPU', 'Turn off the monitor'], correctAnswer: 'Communicate and share resources', explanation: 'Networks connect devices so they can communicate and share data or hardware resources.' },
+    { id: 5, question: 'Which storage type is usually non-volatile?', options: ['RAM', 'Cache', 'Hard drive', 'Register'], correctAnswer: 'Hard drive', explanation: 'A hard drive retains data even when the computer is powered off, unlike RAM.' },
+    { id: 6, question: 'What is the purpose of an input device?', options: ['To display output', 'To send data into the computer', 'To store software', 'To keep the system cool'], correctAnswer: 'To send data into the computer', explanation: 'Input devices like keyboards and mice allow the user to send information into the system.' },
+    { id: 7, question: 'Which of these is an output device?', options: ['Keyboard', 'Monitor', 'Mouse', 'Scanner'], correctAnswer: 'Monitor', explanation: 'A monitor displays information to the user, making it an output device.' },
+    { id: 8, question: 'What does the internet rely on for communication?', options: ['Only one device', 'A complex network of connected systems', 'Only USB ports', 'Only printers'], correctAnswer: 'A complex network of connected systems', explanation: 'The internet is a global network of connected computers and systems that exchange information.' },
+    { id: 9, question: 'What is a database used for?', options: ['To store and organize large amounts of data', 'To change the CPU speed', 'To remove memory', 'To replace an operating system'], correctAnswer: 'To store and organize large amounts of data', explanation: 'Databases help organize, query, and manage large collections of information efficiently.' },
+    { id: 10, question: 'What does BIOS do?', options: ['It stores user files permanently', 'It checks hardware when the computer starts', 'It runs the browser', 'It draws graphics on the screen'], correctAnswer: 'It checks hardware when the computer starts', explanation: 'BIOS initializes and checks basic hardware components during startup before the OS loads.' },
   ],
 }
 
@@ -1272,15 +1122,18 @@ function PlannerPage() {
 }
 
 function QuizPage({ onNavigate, onQuizComplete }) {
+  const QUIZ_LENGTH = 10
+  const QUIZ_DURATION = 10 * 60
+
   const [setup, setSetup] = useState({ subject: 'Python', questionCount: 10, difficulty: 'Easy' })
   const [isStarted, setIsStarted] = useState(false)
   const [questions, setQuestions] = useState([])
   const [selectedAnswers, setSelectedAnswers] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [timeRemaining, setTimeRemaining] = useState(10 * 60)
+  const [timeRemaining, setTimeRemaining] = useState(QUIZ_DURATION)
   const [result, setResult] = useState(null)
 
-  const totalQuestions = Number(setup.questionCount)
+  const totalQuestions = QUIZ_LENGTH
   const currentQuestion = questions[currentIndex]
   const selectedAnswer = selectedAnswers[currentIndex] || ''
 
@@ -1295,6 +1148,16 @@ function QuizPage({ onNavigate, onQuizComplete }) {
     if (percentage >= 70) return 'Great job'
     if (percentage >= 50) return 'Keep practicing'
     return 'Needs more revision'
+  }
+
+  const getRandomQuestions = (subject) => {
+    const bank = quizQuestionBank[subject] || []
+    const shuffledQuestions = [...bank].sort(() => Math.random() - 0.5)
+    return shuffledQuestions.slice(0, totalQuestions).map((question, index) => ({
+      ...question,
+      id: question.id ?? index + 1,
+      options: [...question.options],
+    }))
   }
 
   const finalizeQuiz = (timedOut = false) => {
@@ -1318,8 +1181,7 @@ function QuizPage({ onNavigate, onQuizComplete }) {
     })
 
     const percentage = Math.round((correctAnswers / questions.length) * 100)
-    const totalTime = 10 * 60
-    const usedSeconds = totalTime - timeRemaining
+    const usedSeconds = QUIZ_DURATION - timeRemaining
 
     const resultSummary = {
       subject: setup.subject,
@@ -1357,16 +1219,15 @@ function QuizPage({ onNavigate, onQuizComplete }) {
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [isStarted, result, questions, selectedAnswers, setup.subject, setup.difficulty])
+  }, [isStarted, result, questions.length, setup.subject, setup.difficulty])
 
-  const startQuiz = () => {
-    const bank = quizQuestionBank[setup.subject] || []
-    const availableQuestions = [...bank].sort(() => Math.random() - 0.5).slice(0, totalQuestions)
+  const startQuiz = (subject = setup.subject) => {
+    const availableQuestions = getRandomQuestions(subject)
 
     setQuestions(availableQuestions)
     setSelectedAnswers(Array(availableQuestions.length).fill(''))
     setCurrentIndex(0)
-    setTimeRemaining(10 * 60)
+    setTimeRemaining(QUIZ_DURATION)
     setResult(null)
     setIsStarted(true)
   }
@@ -1389,16 +1250,11 @@ function QuizPage({ onNavigate, onQuizComplete }) {
       return
     }
 
-    setCurrentIndex((currentValue) => currentValue + 1)
+    setCurrentIndex((previousIndex) => previousIndex + 1)
   }
 
   const restartQuiz = () => {
-    setIsStarted(false)
-    setQuestions([])
-    setSelectedAnswers([])
-    setCurrentIndex(0)
-    setTimeRemaining(10 * 60)
-    setResult(null)
+    startQuiz(setup.subject)
   }
 
   if (!isStarted && !result) {
@@ -1425,9 +1281,8 @@ function QuizPage({ onNavigate, onQuizComplete }) {
 
             <label>
               <span>Number of Questions</span>
-              <select value={setup.questionCount} onChange={(event) => setSetup((currentSetup) => ({ ...currentSetup, questionCount: Number(event.target.value) }))}>
+              <select value={setup.questionCount} onChange={(event) => setSetup((currentSetup) => ({ ...currentSetup, questionCount: 10 }))}>
                 <option value={10}>10</option>
-                <option value={5}>5</option>
               </select>
             </label>
 
@@ -1441,7 +1296,7 @@ function QuizPage({ onNavigate, onQuizComplete }) {
             </label>
           </div>
 
-          <button type="button" className="action-button primary start-quiz-button" onClick={startQuiz}>
+          <button type="button" className="action-button primary start-quiz-button" onClick={() => startQuiz()}>
             Start Quiz
           </button>
         </section>
@@ -1464,8 +1319,8 @@ function QuizPage({ onNavigate, onQuizComplete }) {
             <span>{result.correctAnswers}/{result.totalQuestions}</span>
           </div>
 
-          <h3>{result.correctAnswers} / {result.totalQuestions}</h3>
-          <p className="result-percentage">{result.percentage}% accuracy</p>
+          <h3>Score: {result.correctAnswers} / {result.totalQuestions}</h3>
+          <p className="result-percentage">Percentage: {result.percentage}%</p>
           <p className="result-message">{result.message}</p>
 
           <div className="result-metrics">
@@ -1499,7 +1354,7 @@ function QuizPage({ onNavigate, onQuizComplete }) {
 
             <div className="review-list">
               {result.review.map((item, index) => (
-                <div key={`${item.question}-${index}`} className={`review-item ${item.isCorrect ? 'correct' : 'incorrect'}`}>
+                <div key={`${item.id ?? item.question}-${index}`} className={`review-item ${item.isCorrect ? 'correct' : 'incorrect'}`}>
                   <p className="review-question">Q{index + 1}. {item.question}</p>
                   <div className="review-answer-row">
                     <span>Your answer:</span>
@@ -1517,6 +1372,10 @@ function QuizPage({ onNavigate, onQuizComplete }) {
         </section>
       </div>
     )
+  }
+
+  if (!currentQuestion) {
+    return null
   }
 
   return (
@@ -1540,13 +1399,13 @@ function QuizPage({ onNavigate, onQuizComplete }) {
 
         <div className="quiz-progress-wrapper" aria-label="Quiz progress">
           <div className="quiz-progress-track">
-            <div className="quiz-progress-fill" style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
+            <div className="quiz-progress-fill" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
           </div>
         </div>
 
         <div className="quiz-meta-row">
           <span>
-            Question {currentIndex + 1} of {questions.length}
+            Question {currentIndex + 1} of {totalQuestions}
           </span>
           <span>{setup.difficulty} Difficulty</span>
         </div>
@@ -1559,7 +1418,7 @@ function QuizPage({ onNavigate, onQuizComplete }) {
 
             return (
               <button
-                key={option}
+                key={`${currentQuestion.id}-${option}`}
                 type="button"
                 className={`option-button ${isSelected ? 'selected' : ''}`}
                 onClick={() => handleQuestionSelect(option)}
@@ -1877,7 +1736,7 @@ function App() {
   const renderPage = () => {
     switch (activePage) {
       case 'Dashboard':
-        return <DashboardPage />
+        return <DashboardPage stats={initialDashboardStats} activities={initialDashboardActivities} />
       case 'My Subjects':
         return <SubjectsPage />
       case 'AI Tutor':
