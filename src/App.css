@@ -1062,6 +1062,33 @@ textarea {
   color: #f8fafc;
 }
 
+.planner-progress-panel {
+  padding: 18px 20px;
+}
+
+.planner-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.planner-progress-header h3 {
+  margin: 4px 0 0;
+  color: #f8fafc;
+  font-size: 1.15rem;
+}
+
+.planner-progress-header strong {
+  color: #a78bfa;
+  font-size: 1.4rem;
+}
+
+.planner-progress-track {
+  width: 100%;
+}
+
 .todays-focus-card {
   padding: 22px;
 }
@@ -1115,9 +1142,15 @@ textarea {
   border: 1px solid rgba(148, 163, 184, 0.08);
 }
 
+.focus-list li.task-complete {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+}
+
 .focus-list strong,
 .focus-list span,
-.focus-list em {
+.focus-list em,
+.focus-list small {
   display: block;
 }
 
@@ -1126,7 +1159,8 @@ textarea {
   margin-bottom: 4px;
 }
 
-.focus-list span {
+.focus-list span,
+.focus-list small {
   color: #cbd5e1;
   font-size: 0.8rem;
 }
@@ -1136,6 +1170,78 @@ textarea {
   color: #7dd3fc;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.mini-toggle,
+.task-toggle {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
+}
+
+.mini-toggle.done,
+.task-toggle.done {
+  background: rgba(16, 185, 129, 0.15);
+  color: #bbf7d0;
+}
+
+.planner-action-row {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.planner-plan-panel,
+.planner-all-panel {
+  padding: 18px 20px;
+}
+
+.planner-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.planner-task-item {
+  display: grid;
+  grid-template-columns: 1.5fr 0.7fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(148, 163, 184, 0.04);
+}
+
+.planner-task-item.completed {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.planner-task-main h4 {
+  margin: 6px 0 0;
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.planner-day-label {
+  color: #7dd3fc;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planner-task-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #cbd5e1;
+  font-size: 0.8rem;
 }
 
 .planner-form {
@@ -1153,6 +1259,69 @@ textarea {
   margin: 0;
   color: #f8fafc;
   font-size: 1.3rem;
+}
+
+.planner-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.planner-input-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.planner-input-grid input,
+.planner-input-grid select {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #f8fafc;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.planner-validation-message {
+  margin: 16px 0 0;
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+.planner-form-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.planner-empty-state {
+  padding: 24px;
+}
+
+.planner-empty-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+}
+
+.planner-empty-card h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.7rem;
+}
+
+.planner-empty-card p {
+  margin: 0;
+  color: #cbd5e1;
 }
 
 .planner-day-card {
@@ -1271,7 +1440,8 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .planner-summary-grid {
+  .planner-summary-grid,
+  .planner-input-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1279,12 +1449,25 @@ textarea {
 @media (max-width: 820px) {
   .planner-form-header,
   .focus-header,
-  .modal-actions {
+  .planner-progress-header,
+  .modal-actions,
+  .planner-action-row {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .planner-grid {
+  .planner-grid,
+  .planner-task-item {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-task-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .planner-input-grid {
     grid-template-columns: 1fr;
   }
 

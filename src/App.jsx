@@ -104,6 +104,146 @@ const quickPrompts = ['Explain simply', 'Give an example', 'Quiz me', 'Summarize
 
 const plannerDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+const STUDY_PLANNER_STORAGE_KEY = 'studymate-planner-data'
+
+const toInputDateValue = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const addDays = (date, amount) => {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + amount)
+  return nextDate
+}
+
+const getTodayDate = () => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+const getPlannerSummary = (plan) => {
+  if (!plan || !Array.isArray(plan.tasks) || plan.tasks.length === 0) {
+    return {
+      totalSessions: 0,
+      completedSessions: 0,
+      remainingSessions: 0,
+      completionPercentage: 0,
+      totalMinutes: 0,
+      todayTasks: [],
+      upcomingTasks: [],
+    }
+  }
+
+  const todayKey = toInputDateValue(getTodayDate())
+  const totalSessions = plan.tasks.length
+  const completedSessions = plan.tasks.filter((task) => task.completed).length
+  const remainingSessions = totalSessions - completedSessions
+  const completionPercentage = totalSessions === 0 ? 0 : Math.round((completedSessions / totalSessions) * 100)
+  const totalMinutes = plan.tasks.reduce((sum, task) => sum + Number(task.duration || 0), 0)
+  const todayTasks = plan.tasks.filter((task) => task.date === todayKey)
+  const upcomingTasks = plan.tasks.filter((task) => task.date > todayKey)
+
+  return {
+    totalSessions,
+    completedSessions,
+    remainingSessions,
+    completionPercentage,
+    totalMinutes,
+    todayTasks,
+    upcomingTasks,
+  }
+}
+
+const formatStudyDuration = (minutes) => {
+  if (!minutes) {
+    return '0 min'
+  }
+
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+
+  if (hours && remainingMinutes) {
+    return `${hours} hr ${remainingMinutes} min`
+  }
+
+  if (hours) {
+    return `${hours} hr`
+  }
+
+  return `${remainingMinutes} min`
+}
+
+const formatTaskDate = (value) => {
+  if (!value) {
+    return 'No date'
+  }
+
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+const generateStudyPlan = ({ subject, topic, examDate, dailyStudyTime, difficulty }) => {
+  const sanitizedSubject = subject.trim()
+  const sanitizedTopic = topic.trim()
+  const normalizedStudyTime = Number(dailyStudyTime)
+
+  const today = getTodayDate()
+  const exam = new Date(`${examDate}T00:00:00`)
+
+  if (!sanitizedSubject || !sanitizedTopic || !examDate || Number.isNaN(normalizedStudyTime) || normalizedStudyTime <= 0) {
+    return null
+  }
+
+  const differenceInMs = exam.getTime() - today.getTime()
+  const daysUntilExam = Math.max(1, Math.ceil(differenceInMs / (1000 * 60 * 60 * 24)))
+
+  const tasks = Array.from({ length: daysUntilExam }, (_, index) => {
+    const scheduleDate = addDays(today, index)
+    const dateKey = toInputDateValue(scheduleDate)
+    let type = 'Learn'
+
+    if (index === daysUntilExam - 1) {
+      type = 'Quiz'
+    } else if (index >= Math.max(0, daysUntilExam - 3)) {
+      type = 'Revision'
+    } else if (index % 2 === 1 && difficulty !== 'Easy') {
+      type = 'Practice'
+    }
+
+    return {
+      id: `task-${Date.now()}-${index}`,
+      date: dateKey,
+      subject: sanitizedSubject,
+      topic: sanitizedTopic,
+      duration: normalizedStudyTime,
+      type,
+      completed: false,
+    }
+  })
+
+  return {
+    id: `plan-${Date.now()}`,
+    subject: sanitizedSubject,
+    topic: sanitizedTopic,
+    examDate,
+    difficulty,
+    createdAt: new Date().toISOString(),
+    tasks,
+  }
+}
+
 const initialPlanner = {
   Monday: [{ id: 1, subject: 'Python', topic: 'Loops', duration: 45 }],
   Tuesday: [{ id: 2, subject: 'Mathematics', topic: 'Algebra', duration: 60 }],
@@ -858,97 +998,100 @@ function SubjectsPage() {
   )
 }
 
-function PlannerPage() {
-  const [planner, setPlanner] = useState(initialPlanner)
-  const [showSessionForm, setShowSessionForm] = useState(false)
-  const [newSession, setNewSession] = useState({
-    day: 'Monday',
+function PlannerPage({ planner, setPlanner }) {
+  const todayKey = toInputDateValue(getTodayDate())
+  const [form, setForm] = useState({
     subject: 'Python',
-    topic: 'Loops',
-    duration: '45',
+    topic: '',
+    examDate: toInputDateValue(addDays(getTodayDate(), 7)),
+    dailyStudyTime: 45,
+    difficulty: 'Medium',
   })
+  const [validationError, setValidationError] = useState('')
 
-  const formatDuration = (minutes) => {
-    if (!minutes) {
-      return '0 min'
-    }
+  const summary = getPlannerSummary(planner)
+  const todaysTasks = summary.todayTasks
+  const upcomingTasks = summary.upcomingTasks
 
-    const hrs = Math.floor(minutes / 60)
-    const mins = minutes % 60
+  const handleCreatePlan = () => {
+    const subject = form.subject.trim()
+    const topic = form.topic.trim()
+    const dailyStudyTime = Number(form.dailyStudyTime)
+    const examDate = form.examDate
 
-    if (hrs && mins) {
-      return `${hrs} hr ${mins} min`
-    }
-
-    if (hrs) {
-      return `${hrs} hr`
-    }
-
-    return `${mins} min`
-  }
-
-  const allSessions = plannerDays.flatMap((day) => planner[day].map((session) => ({ ...session, day })))
-
-  const totalMinutes = allSessions.reduce((sum, session) => sum + Number(session.duration), 0)
-  const totalHours = totalMinutes / 60
-
-  const subjectCounts = allSessions.reduce((counts, session) => {
-    const key = session.subject
-    counts[key] = (counts[key] || 0) + Number(session.duration)
-    return counts
-  }, {})
-
-  const mostStudiedSubject = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1])[0]
-
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' })
-  const currentDay = plannerDays.includes(todayName) ? todayName : 'Monday'
-  const todaySessions = planner[currentDay] || []
-  const todayMinutes = todaySessions.reduce((sum, session) => sum + Number(session.duration), 0)
-
-  const openSessionForm = () => {
-    setShowSessionForm(true)
-  }
-
-  const closeSessionForm = () => {
-    setShowSessionForm(false)
-    setNewSession({
-      day: currentDay,
-      subject: 'Python',
-      topic: 'Loops',
-      duration: '45',
-    })
-  }
-
-  const handleAddSession = () => {
-    const trimmedTopic = newSession.topic.trim()
-    const durationValue = Number(newSession.duration)
-
-    if (!newSession.day || !newSession.subject || !trimmedTopic || !durationValue || Number.isNaN(durationValue) || durationValue <= 0) {
+    if (!subject) {
+      setValidationError('Subject cannot be empty.')
       return
     }
 
-    setPlanner((currentPlanner) => ({
-      ...currentPlanner,
-      [newSession.day]: [
-        ...currentPlanner[newSession.day],
-        {
-          id: Date.now(),
-          subject: newSession.subject,
-          topic: trimmedTopic,
-          duration: durationValue,
-        },
-      ],
-    }))
+    if (!topic) {
+      setValidationError('Topic cannot be empty.')
+      return
+    }
 
-    closeSessionForm()
+    if (!examDate) {
+      setValidationError('Exam date is required.')
+      return
+    }
+
+    const selectedDate = new Date(`${examDate}T00:00:00`)
+    const today = getTodayDate()
+
+    if (selectedDate < today) {
+      setValidationError('Exam date must be today or a future date.')
+      return
+    }
+
+    if (!Number.isFinite(dailyStudyTime) || dailyStudyTime <= 0) {
+      setValidationError('Daily study time must be greater than 0.')
+      return
+    }
+
+    const generatedPlan = generateStudyPlan({
+      subject,
+      topic,
+      examDate,
+      dailyStudyTime,
+      difficulty: form.difficulty,
+    })
+
+    if (!generatedPlan) {
+      setValidationError('Unable to generate a study plan with the current details.')
+      return
+    }
+
+    setPlanner(generatedPlan)
+    setValidationError('')
   }
 
-  const handleDeleteSession = (day, sessionId) => {
-    setPlanner((currentPlanner) => ({
-      ...currentPlanner,
-      [day]: currentPlanner[day].filter((session) => session.id !== sessionId),
-    }))
+  const handleDeletePlan = () => {
+    setPlanner(null)
+    setValidationError('')
   }
+
+  const handleTaskToggle = (taskId) => {
+    setPlanner((currentPlan) => {
+      if (!currentPlan) {
+        return currentPlan
+      }
+
+      return {
+        ...currentPlan,
+        tasks: currentPlan.tasks.map((task) => {
+          if (task.id !== taskId) {
+            return task
+          }
+
+          return {
+            ...task,
+            completed: !task.completed,
+          }
+        }),
+      }
+    })
+  }
+
+  const emptyState = !planner || !Array.isArray(planner.tasks) || planner.tasks.length === 0
 
   return (
     <div className="page-shell planner-page">
@@ -956,167 +1099,224 @@ function PlannerPage() {
         <div>
           <p className="eyebrow">Study Planner</p>
           <h2>Study Planner</h2>
-          <p className="page-header-subtitle">Plan your week and stay consistent.</p>
+          <p className="page-header-subtitle">Organize your revision and stay on track for exam day.</p>
         </div>
       </header>
 
-      <section className="panel planner-summary-grid">
-        <div className="summary-card accent">
-          <span>Total planned study hours</span>
-          <strong>{totalHours.toFixed(1)} hrs</strong>
-        </div>
-        <div className="summary-card">
-          <span>Number of sessions</span>
-          <strong>{allSessions.length}</strong>
-        </div>
-        <div className="summary-card">
-          <span>Most studied subject</span>
-          <strong>{mostStudiedSubject ? mostStudiedSubject[0] : 'N/A'}</strong>
-        </div>
-      </section>
+      {!emptyState ? (
+        <>
+          <section className="panel planner-summary-grid">
+            <div className="summary-card accent">
+              <span>Total sessions</span>
+              <strong>{summary.totalSessions}</strong>
+            </div>
+            <div className="summary-card">
+              <span>Completed</span>
+              <strong>{summary.completedSessions}</strong>
+            </div>
+            <div className="summary-card">
+              <span>Remaining</span>
+              <strong>{summary.remainingSessions}</strong>
+            </div>
+          </section>
 
-      <section className="panel todays-focus-card">
-        <div className="panel-heading compact">
-          <p className="eyebrow">Today&apos;s Focus</p>
-        </div>
-
-        <div className="focus-header">
-          <div>
-            <h3>{currentDay}</h3>
-            <p>{todaySessions.length} scheduled session{todaySessions.length === 1 ? '' : 's'}</p>
-          </div>
-          <span className="focus-total">{formatDuration(todayMinutes)}</span>
-        </div>
-
-        {todaySessions.length > 0 ? (
-          <ul className="focus-list">
-            {todaySessions.map((session) => (
-              <li key={session.id}>
-                <div>
-                  <strong>{session.subject}</strong>
-                  <span>{session.topic}</span>
-                </div>
-                <em>{formatDuration(session.duration)}</em>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="empty-state">No study sessions planned for today.</p>
-        )}
-      </section>
-
-      <section className="panel planner-form">
-        <div className="planner-form-header">
-          <div>
-            <p className="eyebrow">Weekly plan</p>
-            <h3>Study sessions</h3>
-          </div>
-          <button type="button" className="action-button primary" onClick={openSessionForm}>
-            Add Study Session
-          </button>
-        </div>
-      </section>
-
-      <div className="planner-grid">
-        {plannerDays.map((day) => (
-          <div key={day} className="panel planner-day-card">
-            <div className="day-header-row">
-              <h3>{day}</h3>
-              <span>{planner[day].length} sessions</span>
+          <section className="panel planner-progress-panel">
+            <div className="planner-progress-header">
+              <div>
+                <p className="eyebrow">Planner progress</p>
+                <h3>{summary.completedSessions} / {summary.totalSessions} sessions completed</h3>
+              </div>
+              <strong>{summary.completionPercentage}%</strong>
             </div>
 
-            {planner[day].length > 0 ? (
-              <div className="session-list">
-                {planner[day].map((session) => (
-                  <div key={session.id} className="session-card">
-                    <div className="session-header">
-                      <span className="session-subject">{session.subject}</span>
-                      <button type="button" className="delete-session" onClick={() => handleDeleteSession(day, session.id)}>
-                        Delete
-                      </button>
-                    </div>
+            <div className="progress-track planner-progress-track">
+              <div className="progress-fill" style={{ width: `${summary.completionPercentage}%` }} />
+            </div>
+          </section>
 
-                    <p className="session-topic">{session.topic}</p>
-                    <span className="session-duration">{formatDuration(session.duration)}</span>
+          <section className="panel todays-focus-card">
+            <div className="panel-heading compact">
+              <p className="eyebrow">Today&apos;s Study Plan</p>
+            </div>
+
+            <div className="focus-header">
+              <div>
+                <h3>{formatTaskDate(todayKey)}</h3>
+                <p>{todaysTasks.length} task{todaysTasks.length === 1 ? '' : 's'} scheduled</p>
+              </div>
+              <span className="focus-total">
+                {todaysTasks.reduce((sum, task) => sum + Number(task.duration || 0), 0)} min
+              </span>
+            </div>
+
+            {todaysTasks.length > 0 ? (
+              <ul className="focus-list">
+                {todaysTasks.map((task) => (
+                  <li key={task.id} className={task.completed ? 'task-complete' : ''}>
+                    <div>
+                      <strong>{task.subject}</strong>
+                      <span>{task.topic}</span>
+                      <small>{task.type} • {task.duration} min</small>
+                    </div>
+                    <button type="button" className={`mini-toggle ${task.completed ? 'done' : ''}`} onClick={() => handleTaskToggle(task.id)}>
+                      {task.completed ? 'Completed' : 'Mark complete'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">Nothing scheduled for today.</p>
+            )}
+          </section>
+
+          <div className="planner-action-row">
+            <button type="button" className="action-button primary" onClick={() => {
+              setPlanner(null)
+              setValidationError('')
+            }}>
+              Delete Plan
+            </button>
+            <button type="button" className="action-button secondary" onClick={() => {
+              setPlanner(null)
+              setValidationError('')
+            }}>
+              Reset Planner Data
+            </button>
+          </div>
+
+          <section className="panel planner-plan-panel">
+            <div className="panel-heading compact">
+              <p className="eyebrow">Upcoming plan</p>
+            </div>
+
+            {upcomingTasks.length > 0 ? (
+              <div className="planner-task-list">
+                {upcomingTasks.map((task) => (
+                  <div key={task.id} className={`planner-task-item ${task.completed ? 'completed' : ''}`}>
+                    <div className="planner-task-main">
+                      <span className="planner-day-label">{formatTaskDate(task.date)}</span>
+                      <h4>{task.subject} — {task.topic}</h4>
+                    </div>
+                    <div className="planner-task-meta">
+                      <span>{task.duration} min</span>
+                      <span>{task.type}</span>
+                    </div>
+                    <button type="button" className="task-toggle" onClick={() => handleTaskToggle(task.id)}>
+                      {task.completed ? 'Completed' : 'Mark complete'}
+                    </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="empty-state">No study blocks yet</p>
+              <p className="empty-state">No upcoming study sessions.</p>
             )}
-          </div>
-        ))}
-      </div>
+          </section>
 
-      {showSessionForm && (
-        <div className="modal-overlay" onClick={closeSessionForm}>
-          <div className="session-modal panel" onClick={(event) => event.stopPropagation()}>
+          <section className="panel planner-all-panel">
             <div className="panel-heading compact">
-              <p className="eyebrow">Add study session</p>
-              <h3>New session</h3>
+              <p className="eyebrow">Full schedule</p>
             </div>
 
-            <div className="session-form">
-              <label>
-                <span>Day</span>
-                <select
-                  value={newSession.day}
-                  onChange={(event) => setNewSession((currentState) => ({ ...currentState, day: event.target.value }))}
-                >
-                  {plannerDays.map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Subject</span>
-                <select
-                  value={newSession.subject}
-                  onChange={(event) => setNewSession((currentState) => ({ ...currentState, subject: event.target.value }))}
-                >
-                  <option value="Python">Python</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Computer Fundamentals">Computer Fundamentals</option>
-                  <option value="Weekly Revision">Weekly Revision</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Topic</span>
-                <input
-                  type="text"
-                  value={newSession.topic}
-                  onChange={(event) => setNewSession((currentState) => ({ ...currentState, topic: event.target.value }))}
-                  placeholder="e.g. Loops"
-                />
-              </label>
-
-              <label>
-                <span>Duration (minutes)</span>
-                <input
-                  type="number"
-                  min="15"
-                  step="15"
-                  value={newSession.duration}
-                  onChange={(event) => setNewSession((currentState) => ({ ...currentState, duration: event.target.value }))}
-                />
-              </label>
-
-              <div className="modal-actions">
-                <button type="button" className="action-button secondary" onClick={closeSessionForm}>
-                  Cancel
-                </button>
-                <button type="button" className="action-button primary" onClick={handleAddSession}>
-                  Add Session
-                </button>
-              </div>
+            <div className="planner-task-list">
+              {planner.tasks.map((task) => (
+                <div key={task.id} className={`planner-task-item ${task.completed ? 'completed' : ''}`}>
+                  <div className="planner-task-main">
+                    <span className="planner-day-label">{formatTaskDate(task.date)}</span>
+                    <h4>{task.subject} — {task.topic}</h4>
+                  </div>
+                  <div className="planner-task-meta">
+                    <span>{task.duration} min</span>
+                    <span>{task.type}</span>
+                  </div>
+                  <button type="button" className="task-toggle" onClick={() => handleTaskToggle(task.id)}>
+                    {task.completed ? 'Completed' : 'Mark complete'}
+                  </button>
+                </div>
+              ))}
             </div>
+          </section>
+        </>
+      ) : (
+        <section className="panel planner-empty-state">
+          <div className="planner-empty-card">
+            <p className="eyebrow">Study Planner</p>
+            <h3>No study plan yet.</h3>
+            <p>Create your first study plan to organize your preparation.</p>
+          </div>
+        </section>
+      )}
+
+      <section className="panel planner-form">
+        <div className="planner-form-header">
+          <div>
+            <p className="eyebrow">Planner setup</p>
+            <h3>Create study plan</h3>
           </div>
         </div>
-      )}
+
+        <div className="planner-input-grid">
+          <label>
+            <span>Subject name</span>
+            <input
+              type="text"
+              value={form.subject}
+              onChange={(event) => setForm((currentForm) => ({ ...currentForm, subject: event.target.value }))}
+              placeholder="e.g. Python"
+            />
+          </label>
+
+          <label>
+            <span>Topic / chapter</span>
+            <input
+              type="text"
+              value={form.topic}
+              onChange={(event) => setForm((currentForm) => ({ ...currentForm, topic: event.target.value }))}
+              placeholder="e.g. Loops"
+            />
+          </label>
+
+          <label>
+            <span>Exam date</span>
+            <input
+              type="date"
+              min={toInputDateValue(getTodayDate())}
+              value={form.examDate}
+              onChange={(event) => setForm((currentForm) => ({ ...currentForm, examDate: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            <span>Daily available study time</span>
+            <input
+              type="number"
+              min="15"
+              step="15"
+              value={form.dailyStudyTime}
+              onChange={(event) => setForm((currentForm) => ({ ...currentForm, dailyStudyTime: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            <span>Difficulty</span>
+            <select
+              value={form.difficulty}
+              onChange={(event) => setForm((currentForm) => ({ ...currentForm, difficulty: event.target.value }))}
+            >
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </label>
+        </div>
+
+        {validationError && <p className="planner-validation-message">{validationError}</p>}
+
+        <div className="planner-form-actions">
+          <button type="button" className="action-button primary" onClick={handleCreatePlan}>
+            Create Study Plan
+          </button>
+        </div>
+      </section>
     </div>
   )
 }
@@ -1732,17 +1932,68 @@ function Sidebar({ activePage, setActivePage }) {
 function App() {
   const [activePage, setActivePage] = useState('Dashboard')
   const [settings, setSettings] = useState(defaultSettings)
+  const [planner, setPlanner] = useState(() => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+
+    try {
+      const storedPlanner = window.localStorage.getItem(STUDY_PLANNER_STORAGE_KEY)
+      return storedPlanner ? JSON.parse(storedPlanner) : null
+    } catch {
+      return null
+    }
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (planner) {
+      window.localStorage.setItem(STUDY_PLANNER_STORAGE_KEY, JSON.stringify(planner))
+      return
+    }
+
+    window.localStorage.removeItem(STUDY_PLANNER_STORAGE_KEY)
+  }, [planner])
+
+  const plannerSummary = planner ? getPlannerSummary(planner) : null
+  const dashboardStats = [...initialDashboardStats]
+
+  if (plannerSummary && plannerSummary.totalSessions > 0) {
+    const plannerProgress = Math.min(100, Math.round((plannerSummary.completedSessions / plannerSummary.totalSessions) * 100))
+    dashboardStats[0] = {
+      label: 'Overall Progress',
+      value: `${plannerProgress}%`,
+      detail: `${plannerSummary.completedSessions}/${plannerSummary.totalSessions} planner sessions`,
+    }
+  }
+
+  const dashboardActivities = [
+    ...(plannerSummary && plannerSummary.totalSessions > 0
+      ? (planner.tasks || [])
+          .filter((task) => task.completed)
+          .slice(0, 3)
+          .map((task) => ({
+            title: `Completed ${task.subject} ${task.topic} (${task.type})`,
+            time: 'Just now',
+            accent: 'learning',
+          }))
+      : []),
+    ...initialDashboardActivities,
+  ].slice(0, 6)
 
   const renderPage = () => {
     switch (activePage) {
       case 'Dashboard':
-        return <DashboardPage stats={initialDashboardStats} activities={initialDashboardActivities} />
+        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} />
       case 'My Subjects':
         return <SubjectsPage />
       case 'AI Tutor':
         return <TutorPage />
       case 'Study Planner':
-        return <PlannerPage />
+        return <PlannerPage planner={planner} setPlanner={setPlanner} />
       case 'Quiz':
         return <QuizPage onNavigate={setActivePage} />
       case 'Progress':
@@ -1750,7 +2001,7 @@ function App() {
       case 'Settings':
         return <SettingsPage settings={settings} setSettings={setSettings} onSave={setSettings} />
       default:
-        return <DashboardPage />
+        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} />
     }
   }
 
