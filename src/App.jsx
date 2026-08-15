@@ -478,94 +478,39 @@ function TutorPage() {
     return createComputerQuiz()
   }
 
-  const buildTutorReply = ({ message, action, subjectOverride, topicOverride }) => {
-    const activeSubject = subjectOverride || selectedSubject
-    const topicLabel = topicOverride || topic.trim() || 'this topic'
-    const lowerTopic = topicLabel.toLowerCase()
+  const sendTutorQuestion = async (messageText) => {
+    const text = messageText.trim()
 
-    if (activeSubject === 'Python') {
-      if (lowerTopic.includes('loop')) {
-        if (action === 'example') {
-          return 'A loop lets you repeat a block of code multiple times.\n\nExample:\nfor i in range(5):\n    print(i)\n\nThis prints 0, 1, 2, 3, 4. The loop runs once for each value in range(5), so the same code is repeated several times.\n\nKey takeaway: loops save time when you need to do the same task repeatedly.'
-        }
-
-        if (action === 'summarize') {
-          return '1. A loop repeats code multiple times.\n2. It is useful for tasks like printing items or processing data.\n3. The loop variable changes each time the loop runs.\n4. Loops help you write cleaner, shorter code.\n\nKey takeaway: loops are a beginner-friendly way to automate repeated actions.'
-        }
-
-        if (action === 'quiz') {
-          return 'Quick question: Which statement best describes a loop in Python?\nA. A loop repeats a block of code multiple times\nB. A loop stores values in a dictionary\nC. A loop stops a program\nD. A loop defines a function\nType A, B, C, or D.'
-        }
-
-        return 'A loop lets you repeat a block of code multiple times.\n\nExample:\nfor i in range(5):\n    print(i)\n\nThis prints 0, 1, 2, 3, 4. The loop runs once for each number in the range, so you do not have to write the same print statement repeatedly.\n\nKey takeaway: loops are perfect for repetitive tasks in Python.'
-      }
-
-      if (lowerTopic.includes('variable')) {
-        return 'A variable is a container that stores a value so your program can use it later.\n\nExample:\nname = "Ava"\nprint(name)\n\nHere, the value "Ava" is stored in the variable name. When you print name, Python shows the stored value.\n\nKey takeaway: variables help you store information and reuse it in your code.'
-      }
-
-      if (lowerTopic.includes('function')) {
-        return 'A function is a reusable block of code that performs a specific job.\n\nExample:\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Sam"))\n\nThe function greet takes a name and returns a greeting. This is useful because you can call the same function many times instead of rewriting the code.\n\nKey takeaway: functions make programs easier to organize and reuse.'
-      }
-
-      if (lowerTopic.includes('list')) {
-        return 'A list is an ordered collection of values. You can store multiple items in one variable and access them by position.\n\nExample:\nmarks = [70, 85, 90]\nprint(marks[0])\n\nThis prints 70 because Python starts counting list positions at 0.\n\nKey takeaway: lists are useful when you want to group related values together.'
-      }
-
-      if (lowerTopic.includes('dict') || lowerTopic.includes('dictionary')) {
-        return 'A dictionary stores data as key-value pairs, which means each item has a label and a value.\n\nExample:\nstudent = {"name": "Ava", "score": 92}\nprint(student["name"])\n\nThis prints Ava because the key name points to the value Ava. Dictionaries are helpful when you want to organize information by labels instead of by position.\n\nKey takeaway: dictionaries are great for structured data that needs labels.'
-      }
-
-      if (lowerTopic.includes('recurs')) {
-        return 'Recursion happens when a function calls itself to solve a smaller version of the same problem.\n\nExample:\ndef countdown(n):\n    if n == 0:\n        return\n    print(n)\n    countdown(n - 1)\n\nThis function prints 3, 2, 1 and then stops when n reaches 0. The stopping condition is important, or the function would keep calling itself forever.\n\nKey takeaway: recursion is powerful for problems like tree traversal and factorials, but it must have a stopping condition.'
-      }
-
-      if (lowerTopic.includes('cond')) {
-        return 'Conditionals let your program make decisions. They check whether a statement is true or false before running code.\n\nExample:\nage = 18\nif age >= 18:\n    print("Adult")\nelse:\n    print("Minor")\n\nHere, the program checks the condition age >= 18. If it is true, it prints Adult; otherwise it prints Minor.\n\nKey takeaway: conditionals help programs respond to different situations.'
-      }
+    if (!text) {
+      return
     }
 
-    if (activeSubject === 'Mathematics') {
-      if (lowerTopic.includes('algebra')) {
-        return 'Algebra is about solving for unknown values using symbols and equations.\n\nExample:\n2x + 6 = 14\nStep 1: subtract 6 from both sides -> 2x = 8\nStep 2: divide both sides by 2 -> x = 4\n\nThis shows the idea of keeping both sides balanced while isolating the variable.\n\nKey takeaway: algebra helps you solve equations by keeping the balance on both sides.'
+    setChat((currentChat) => [...currentChat, { role: 'user', text }])
+    setStudentInput('')
+    setIsTyping(true)
+
+    try {
+      const response = await fetch('/api/ask-tutor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: text }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to get an answer right now.')
       }
 
-      if (lowerTopic.includes('percent')) {
-        return 'Percent means “out of 100.” To find a percentage, multiply by the percentage and divide by 100.\n\nExample:\n25% of 80 = 80 × 25 / 100 = 20\n\nThis means a quarter of 80 is 20. Percentages are used in discounts, grades, and data comparisons.\n\nKey takeaway: percentages compare a part to a whole.'
-      }
-
-      if (lowerTopic.includes('prob')) {
-        return 'Probability is the chance that an event happens. It is calculated as:\nP(event) = favorable outcomes / total outcomes\n\nExample:\nA fair coin has two outcomes: heads or tails.\nP(heads) = 1 / 2 = 0.5\n\nSo there is a 50% chance of heads.\n\nKey takeaway: probability helps us measure how likely something is to happen.'
-      }
-
-      if (lowerTopic.includes('calculus') || lowerTopic.includes('deriv')) {
-        return 'Basic calculus studies change. A derivative tells us how quickly a quantity changes.\n\nExample:\nFor y = x², the derivative is 2x.\nThis means the slope of the curve changes as x changes.\n\nIn simple terms, derivatives help describe motion, growth, and rates of change.\n\nKey takeaway: calculus is used to understand how things change over time.'
-      }
+      setChat((currentChat) => [...currentChat, { role: 'ai', text: data.answer || 'I am here to help.' }])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong while contacting the tutor.'
+      setChat((currentChat) => [...currentChat, { role: 'ai', text: `Sorry, I couldn’t answer that right now. ${errorMessage}` }])
+    } finally {
+      setIsTyping(false)
     }
-
-    if (activeSubject === 'Computer Fundamentals') {
-      if (lowerTopic.includes('cpu')) {
-        return 'The CPU is the central processing unit, often called the “brain” of the computer. It reads instructions and carries out calculations.\n\nReal-world example: when you open a browser, the CPU processes the commands needed to show the page.\n\nKey takeaway: the CPU handles the main processing work in a computer.'
-      }
-
-      if (lowerTopic.includes('ram')) {
-        return 'RAM is temporary memory the computer uses while programs are running. It helps the system access data quickly.\n\nReal-world example: when you switch between apps, RAM keeps them ready so the switch feels fast.\n\nKey takeaway: RAM is fast and temporary, while permanent storage keeps files for longer periods.'
-      }
-
-      if (lowerTopic.includes('operating') || lowerTopic.includes('system')) {
-        return 'An operating system manages the computer’s hardware and software. It helps you run apps, organize files, and control devices.\n\nReal-world example: Windows, macOS, and Linux are operating systems.\n\nKey takeaway: the operating system acts like a manager between the user and the computer hardware.'
-      }
-
-      if (lowerTopic.includes('network')) {
-        return 'A network connects computers so they can share information. This can happen over Wi-Fi, Ethernet, or the internet.\n\nReal-world example: when you send a message or open a website, data travels through different network paths.\n\nKey takeaway: networking allows devices to communicate and share resources.'
-      }
-
-      if (lowerTopic.includes('database')) {
-        return 'A database is a structured place to store information so it can be searched, updated, and managed efficiently.\n\nReal-world example: student records, online shopping orders, and product details are usually stored in databases.\n\nKey takeaway: databases keep large amounts of information organized and easy to access.'
-      }
-    }
-
-    return `Here is a simple explanation of ${topicLabel} in ${activeSubject}: start with the main idea, then connect it to a short example. The best way to learn is to understand the concept first, test it, and practice a small example.\n\nKey takeaway: breaking a topic into a simple idea and one example makes it much easier to learn.`
   }
 
   const handleQuickPrompt = (action) => {
@@ -583,28 +528,7 @@ function TutorPage() {
 
     setSelectedSubject(context.subject)
     setTopic(context.topic)
-    setChat((currentChat) => [...currentChat, { role: 'user', text: actionMessage }])
-    setStudentInput('')
-    setIsTyping(true)
-
-    window.setTimeout(() => {
-      const reply = buildTutorReply({
-        message: actionMessage,
-        action,
-        subjectOverride: context.subject,
-        topicOverride: context.topic,
-      })
-
-      if (action === 'quiz') {
-        const quizQuestion = createQuizQuestion()
-        setQuizState(quizQuestion)
-        setChat((currentChat) => [...currentChat, { role: 'ai', text: `${reply}\n\n${quizQuestion.question}\nA. ${quizQuestion.options[0]}\nB. ${quizQuestion.options[1]}\nC. ${quizQuestion.options[2]}\nD. ${quizQuestion.options[3]}` }])
-      } else {
-        setChat((currentChat) => [...currentChat, { role: 'ai', text: reply }])
-      }
-
-      setIsTyping(false)
-    }, 700)
+    sendTutorQuestion(actionMessage)
   }
 
   const handleSendMessage = (messageText = studentInput) => {
@@ -614,63 +538,7 @@ function TutorPage() {
       return
     }
 
-    if (quizState) {
-      const normalizedInput = text.toLowerCase()
-      const answerIndex = quizState.options.findIndex((option, index) => {
-        const optionText = option.toLowerCase()
-        const letterAnswer = ['a', 'b', 'c', 'd'][index]
-        return optionText === normalizedInput || optionText.includes(normalizedInput) || letterAnswer === normalizedInput
-      })
-      const isCorrect = answerIndex !== -1 && quizState.options[answerIndex].toLowerCase() === quizState.answer.toLowerCase()
-      const answerText = isCorrect
-        ? `Correct! ${quizState.answer} is the right answer.`
-        : `Not quite. The correct answer is ${quizState.answer}. Try a quick example or ask for another explanation if you want to review it.`
-
-      setChat((currentChat) => [...currentChat, { role: 'user', text }])
-      setQuizState(null)
-      setIsTyping(true)
-
-      window.setTimeout(() => {
-        setChat((currentChat) => [...currentChat, { role: 'ai', text: answerText }])
-        setIsTyping(false)
-      }, 700)
-
-      setStudentInput('')
-      return
-    }
-
-    const context = {
-      subject: normalizeSubject(text),
-      topic: parseTopicFromMessage(text),
-    }
-
-    setSelectedSubject(context.subject)
-    setTopic(context.topic)
-
-    const action = inferAction(text)
-
-    setChat((currentChat) => [...currentChat, { role: 'user', text }])
-    setStudentInput('')
-    setIsTyping(true)
-
-    window.setTimeout(() => {
-      const reply = buildTutorReply({
-        message: text,
-        action,
-        subjectOverride: context.subject,
-        topicOverride: context.topic,
-      })
-
-      if (action === 'quiz') {
-        const quizQuestion = createQuizQuestion()
-        setQuizState(quizQuestion)
-        setChat((currentChat) => [...currentChat, { role: 'ai', text: `${reply}\n\n${quizQuestion.question}\nA. ${quizQuestion.options[0]}\nB. ${quizQuestion.options[1]}\nC. ${quizQuestion.options[2]}\nD. ${quizQuestion.options[3]}` }])
-      } else {
-        setChat((currentChat) => [...currentChat, { role: 'ai', text: reply }])
-      }
-
-      setIsTyping(false)
-    }, 700)
+    sendTutorQuestion(text)
   }
 
   const handleKeyDown = (event) => {
