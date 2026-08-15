@@ -720,6 +720,30 @@ textarea {
   flex-wrap: wrap;
 }
 
+.subjects-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.subjects-controls-row select,
+.search-box input,
+.topic-editor input,
+.subject-form input,
+.subject-form textarea,
+.subject-form-row input,
+.subject-form-row select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(15, 23, 42, 0.45);
+  color: #f8fafc;
+  padding: 11px 12px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
 .search-box {
   flex: 1;
   min-width: 220px;
@@ -731,6 +755,55 @@ textarea {
 
 .subjects-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.subject-card-actions {
+  margin-top: auto;
+}
+
+.subject-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-validation-message {
+  margin: 0;
+  color: #fda4af;
+  font-size: 0.8rem;
+}
+
+.topic-editor {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.topic-check-button,
+.topic-delete-button {
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.topic-check-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.5);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  font-weight: 700;
+}
+
+.topic-delete-button {
+  margin-left: auto;
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  padding: 6px 10px;
+  font-size: 0.7rem;
 }
 
 .subject-page-card {

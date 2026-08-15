@@ -31,74 +31,145 @@ const dashboardMissions = [
   'Take a 10-question quiz',
 ]
 
-const subjectData = [
+const SUBJECTS_STORAGE_KEY = 'studymate_subjects'
+
+const clampProgress = (value) => {
+  const numericValue = Number(value)
+
+  if (!Number.isFinite(numericValue)) {
+    return 0
+  }
+
+  return Math.min(100, Math.max(0, numericValue))
+}
+
+const createTopic = (name, completed = false) => ({
+  id: `topic-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+  name,
+  completed,
+})
+
+const calculateTopicProgress = (topics = []) => {
+  if (!Array.isArray(topics) || topics.length === 0) {
+    return 0
+  }
+
+  const completedCount = topics.filter((topic) => topic?.completed).length
+  return Math.round((completedCount / topics.length) * 100)
+}
+
+const getSubjectStatus = (subject) => {
+  const progress = typeof subject?.progress === 'number' ? subject.progress : 0
+
+  if (progress === 0) return 'Not Started'
+  if (progress === 100) return 'Completed'
+  return 'In Progress'
+}
+
+const normalizeStoredSubjects = (storedSubjects) => {
+  if (!Array.isArray(storedSubjects) || storedSubjects.length === 0) {
+    return []
+  }
+
+  return storedSubjects.map((subject, index) => {
+    const topics = Array.isArray(subject?.topics)
+      ? subject.topics
+          .map((topic, topicIndex) => ({
+            id: topic?.id || `topic-${subject.id || index}-${topicIndex}`,
+            name: String(topic?.name || '').trim() || `Topic ${topicIndex + 1}`,
+            completed: Boolean(topic?.completed),
+          }))
+          .filter((topic) => topic.name)
+      : []
+
+    const fallbackProgress = topics.length > 0 ? calculateTopicProgress(topics) : clampProgress(subject?.progress)
+
+    return {
+      id: subject?.id || `subject-${Date.now()}-${index}`,
+      name: String(subject?.name || '').trim() || `Subject ${index + 1}`,
+      description: String(subject?.description || 'A focused learning path for better study habits.'),
+      progress: clampProgress(fallbackProgress),
+      target: clampProgress(Number(subject?.target ?? 80)),
+      topics,
+      createdAt: subject?.createdAt || new Date().toISOString(),
+    }
+  })
+}
+
+const buildDefaultSubjects = () => [
   {
+    id: 'subject-python',
     name: 'Python',
-    progress: 80,
-    completedTopics: 8,
-    totalTopics: 10,
-    studyTime: '6.5 hrs',
-    nextTopic: 'Functions',
     description: 'Build practical coding confidence with Python basics, logic, and real exercises.',
-    accent: 'python',
+    progress: 80,
+    target: 85,
     topics: [
-      { name: 'Variables', completed: true },
-      { name: 'Loops', completed: true },
-      { name: 'Lists', completed: true },
-      { name: 'Dictionaries', completed: true },
-      { name: 'Conditionals', completed: true },
-      { name: 'Functions', completed: true },
-      { name: 'Recursion', completed: true },
-      { name: 'File Handling', completed: true },
-      { name: 'Modules', completed: false },
-      { name: 'Practice Project', completed: false },
+      { id: 'python-variables', name: 'Variables', completed: true },
+      { id: 'python-loops', name: 'Loops', completed: true },
+      { id: 'python-lists', name: 'Lists', completed: true },
+      { id: 'python-dictionaries', name: 'Dictionaries', completed: true },
+      { id: 'python-functions', name: 'Functions', completed: true },
+      { id: 'python-conditionals', name: 'Conditionals', completed: true },
+      { id: 'python-recursion', name: 'Recursion', completed: true },
+      { id: 'python-file-handling', name: 'File Handling', completed: true },
+      { id: 'python-modules', name: 'Modules', completed: false },
+      { id: 'python-project', name: 'Practice Project', completed: false },
     ],
+    createdAt: new Date().toISOString(),
   },
   {
+    id: 'subject-mathematics',
     name: 'Mathematics',
-    progress: 60,
-    completedTopics: 6,
-    totalTopics: 10,
-    studyTime: '4.5 hrs',
-    nextTopic: 'Probability',
     description: 'Strengthen problem-solving and formula-based reasoning across core math topics.',
-    accent: 'math',
+    progress: 60,
+    target: 75,
     topics: [
-      { name: 'Fractions', completed: true },
-      { name: 'Algebra Basics', completed: true },
-      { name: 'Equations', completed: true },
-      { name: 'Percentages', completed: true },
-      { name: 'Ratios', completed: true },
-      { name: 'Probability', completed: true },
-      { name: 'Graphs', completed: false },
-      { name: 'Statistics', completed: false },
-      { name: 'Calculus Basics', completed: false },
-      { name: 'Revision Sprint', completed: false },
+      { id: 'math-fractions', name: 'Fractions', completed: true },
+      { id: 'math-algebra', name: 'Algebra Basics', completed: true },
+      { id: 'math-equations', name: 'Equations', completed: true },
+      { id: 'math-percentages', name: 'Percentages', completed: true },
+      { id: 'math-ratios', name: 'Ratios', completed: true },
+      { id: 'math-probability', name: 'Probability', completed: true },
+      { id: 'math-graphs', name: 'Graphs', completed: false },
+      { id: 'math-statistics', name: 'Statistics', completed: false },
+      { id: 'math-calculus', name: 'Calculus Basics', completed: false },
+      { id: 'math-revision', name: 'Revision Sprint', completed: false },
     ],
+    createdAt: new Date().toISOString(),
   },
   {
+    id: 'subject-computer-fundamentals',
     name: 'Computer Fundamentals',
-    progress: 70,
-    completedTopics: 7,
-    totalTopics: 10,
-    studyTime: '3.5 hrs',
-    nextTopic: 'Networking',
     description: 'Understand the core systems, hardware, and digital foundations behind modern computing.',
-    accent: 'computer',
+    progress: 70,
+    target: 80,
     topics: [
-      { name: 'Computer Components', completed: true },
-      { name: 'CPU', completed: true },
-      { name: 'RAM & Storage', completed: true },
-      { name: 'Operating Systems', completed: true },
-      { name: 'Hardware Basics', completed: true },
-      { name: 'Input/Output', completed: true },
-      { name: 'Networking', completed: true },
-      { name: 'Internet Basics', completed: false },
-      { name: 'Security Essentials', completed: false },
-      { name: 'Database Basics', completed: false },
+      { id: 'computer-components', name: 'Computer Components', completed: true },
+      { id: 'computer-cpu', name: 'CPU', completed: true },
+      { id: 'computer-ram', name: 'RAM & Storage', completed: true },
+      { id: 'computer-os', name: 'Operating Systems', completed: true },
+      { id: 'computer-hardware', name: 'Hardware Basics', completed: true },
+      { id: 'computer-io', name: 'Input/Output', completed: true },
+      { id: 'computer-networking', name: 'Networking', completed: true },
+      { id: 'computer-internet', name: 'Internet Basics', completed: false },
+      { id: 'computer-security', name: 'Security Essentials', completed: false },
+      { id: 'computer-database', name: 'Database Basics', completed: false },
     ],
+    createdAt: new Date().toISOString(),
   },
 ]
+
+const parseTopicsText = (value) => {
+  if (!value || typeof value !== 'string') {
+    return []
+  }
+
+  return value
+    .split(/[\n,]+/)
+    .map((topic) => topic.trim())
+    .filter(Boolean)
+    .map((name) => createTopic(name, false))
+}
 
 const quickPrompts = ['Explain simply', 'Give an example', 'Quiz me', 'Summarize']
 
@@ -341,7 +412,9 @@ function ProgressOverviewCard({ label, value, detail }) {
   )
 }
 
-function DashboardPage({ stats, activities }) {
+function DashboardPage({ stats, activities, subjects = [] }) {
+  const liveSubjects = subjects.length > 0 ? subjects : buildDefaultSubjects()
+
   return (
     <>
       <header className="topbar">
@@ -423,8 +496,8 @@ function DashboardPage({ stats, activities }) {
               <p className="eyebrow">Subject progress</p>
             </div>
 
-            {subjectData.map((subject) => (
-              <div key={subject.name} className="subject-item">
+            {liveSubjects.slice(0, 3).map((subject) => (
+              <div key={subject.id || subject.name} className="subject-item">
                 <div className="subject-row">
                   <span>{subject.name}</span>
                   <strong>{subject.progress}%</strong>
@@ -785,45 +858,223 @@ function TutorPage() {
   )
 }
 
-function SubjectsPage() {
-  const [subjects, setSubjects] = useState(subjectData)
+function SubjectsPage({ subjects, setSubjects }) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSubject, setSelectedSubject] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [sortBy, setSortBy] = useState('Recently Added')
+  const [selectedSubjectId, setSelectedSubjectId] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [newSubject, setNewSubject] = useState({ name: '', description: '' })
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [newTopicName, setNewTopicName] = useState('')
+  const [subjectError, setSubjectError] = useState('')
+  const [editError, setEditError] = useState('')
+  const [subjectForm, setSubjectForm] = useState({
+    name: '',
+    description: '',
+    target: 80,
+    progress: 0,
+    topics: '',
+  })
+  const [editForm, setEditForm] = useState(null)
 
-  const filteredSubjects = subjects.filter((subject) =>
-    subject.name.toLowerCase().includes(searchTerm.trim().toLowerCase()),
-  )
+  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) || null
+
+  const filteredSubjects = [...subjects]
+    .filter((subject) => {
+      const matchesSearch = subject.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
+      const currentStatus = getSubjectStatus(subject)
+      const matchesFilter =
+        statusFilter === 'All' ||
+        (statusFilter === 'Not Started' && currentStatus === 'Not Started') ||
+        (statusFilter === 'In Progress' && currentStatus === 'In Progress') ||
+        (statusFilter === 'Completed' && currentStatus === 'Completed')
+
+      return matchesSearch && matchesFilter
+    })
+    .sort((left, right) => {
+      switch (sortBy) {
+        case 'Name A-Z':
+          return left.name.localeCompare(right.name)
+        case 'Progress High-Low':
+          return right.progress - left.progress
+        case 'Progress Low-High':
+          return left.progress - right.progress
+        case 'Recently Added':
+        default:
+          return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      }
+    })
 
   const handleAddSubject = () => {
-    const trimmedName = newSubject.name.trim()
-    const trimmedDescription = newSubject.description.trim()
+    const trimmedName = subjectForm.name.trim()
+    const description = subjectForm.description.trim() || 'A new learning path to explore.'
+    const target = Number(subjectForm.target)
+    const progress = Number(subjectForm.progress)
 
     if (!trimmedName) {
+      setSubjectError('Subject name cannot be empty.')
       return
     }
 
-    const subjectTemplate = {
-      name: trimmedName,
-      progress: 0,
-      completedTopics: 0,
-      totalTopics: 10,
-      studyTime: '0 hrs',
-      nextTopic: 'Get started',
-      description: trimmedDescription || 'A new learning path to explore.',
-      accent: 'python',
-      topics: Array.from({ length: 5 }, (_, index) => ({
-        name: `Topic ${index + 1}`,
-        completed: false,
-      })),
+    if (!Number.isFinite(target) || target < 0 || target > 100) {
+      setSubjectError('Target must be between 0 and 100.')
+      return
     }
 
-    setSubjects((currentSubjects) => [subjectTemplate, ...currentSubjects])
-    setNewSubject({ name: '', description: '' })
+    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+      setSubjectError('Progress must be between 0 and 100.')
+      return
+    }
+
+    const parsedTopics = parseTopicsText(subjectForm.topics)
+    const safeProgress = parsedTopics.length > 0 ? calculateTopicProgress(parsedTopics) : clampProgress(progress)
+
+    const newSubject = {
+      id: `subject-${Date.now()}`,
+      name: trimmedName,
+      description,
+      progress: safeProgress,
+      target: clampProgress(target),
+      topics: parsedTopics,
+      createdAt: new Date().toISOString(),
+    }
+
+    setSubjects((currentSubjects) => [newSubject, ...currentSubjects])
+    setSelectedSubjectId(newSubject.id)
     setShowAddModal(false)
+    setSubjectError('')
+    setSubjectForm({ name: '', description: '', target: 80, progress: 0, topics: '' })
   }
 
+  const handleSaveEdit = () => {
+    if (!editForm || !selectedSubjectId) {
+      return
+    }
+
+    const trimmedName = editForm.name.trim()
+    const target = Number(editForm.target)
+    const progress = Number(editForm.progress)
+
+    if (!trimmedName) {
+      setEditError('Subject name cannot be empty.')
+      return
+    }
+
+    if (!Number.isFinite(target) || target < 0 || target > 100) {
+      setEditError('Target must be between 0 and 100.')
+      return
+    }
+
+    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+      setEditError('Progress must be between 0 and 100.')
+      return
+    }
+
+    setSubjects((currentSubjects) =>
+      currentSubjects.map((subject) => {
+        if (subject.id !== selectedSubjectId) {
+          return subject
+        }
+
+        return {
+          ...subject,
+          name: trimmedName,
+          description: editForm.description.trim() || 'A focused learning path for better study habits.',
+          target: clampProgress(target),
+          progress: subject.topics.length > 0 ? calculateTopicProgress(subject.topics) : clampProgress(progress),
+        }
+      }),
+    )
+
+    setShowEditModal(false)
+    setEditError('')
+    setEditForm(null)
+  }
+
+  const handleDeleteSubject = (subjectId) => {
+    const confirmed = window.confirm('Are you sure you want to delete this subject?')
+    if (!confirmed) {
+      return
+    }
+
+    setSubjects((currentSubjects) => currentSubjects.filter((subject) => subject.id !== subjectId))
+    setSelectedSubjectId(null)
+    setShowEditModal(false)
+    setEditForm(null)
+  }
+
+  const handleAddTopic = () => {
+    const trimmedName = newTopicName.trim()
+    if (!trimmedName || !selectedSubject) {
+      return
+    }
+
+    setSubjects((currentSubjects) =>
+      currentSubjects.map((subject) => {
+        if (subject.id !== selectedSubject.id) {
+          return subject
+        }
+
+        const nextTopics = [...subject.topics, createTopic(trimmedName, false)]
+        return {
+          ...subject,
+          topics: nextTopics,
+          progress: calculateTopicProgress(nextTopics),
+        }
+      }),
+    )
+
+    setNewTopicName('')
+  }
+
+  const handleToggleTopic = (subjectId, topicId) => {
+    setSubjects((currentSubjects) =>
+      currentSubjects.map((subject) => {
+        if (subject.id !== subjectId) {
+          return subject
+        }
+
+        const nextTopics = subject.topics.map((topic) =>
+          topic.id === topicId ? { ...topic, completed: !topic.completed } : topic,
+        )
+
+        return {
+          ...subject,
+          topics: nextTopics,
+          progress: calculateTopicProgress(nextTopics),
+        }
+      }),
+    )
+  }
+
+  const handleDeleteTopic = (subjectId, topicId) => {
+    setSubjects((currentSubjects) =>
+      currentSubjects.map((subject) => {
+        if (subject.id !== subjectId) {
+          return subject
+        }
+
+        const nextTopics = subject.topics.filter((topic) => topic.id !== topicId)
+        return {
+          ...subject,
+          topics: nextTopics,
+          progress: nextTopics.length > 0 ? calculateTopicProgress(nextTopics) : clampProgress(subject.progress),
+        }
+      }),
+    )
+  }
+
+  const openEditModal = (subject) => {
+    setEditForm({
+      name: subject.name,
+      description: subject.description,
+      target: subject.target,
+      progress: subject.topics.length > 0 ? calculateTopicProgress(subject.topics) : subject.progress,
+    })
+    setShowEditModal(true)
+  }
+
+  const totalTopics = selectedSubject ? selectedSubject.topics.length : 0
   const completedTopics = selectedSubject ? selectedSubject.topics.filter((topic) => topic.completed).length : 0
 
   return (
@@ -846,22 +1097,43 @@ function SubjectsPage() {
           />
         </div>
 
-        <button type="button" className="action-button primary" onClick={() => setShowAddModal(true)}>
-          Add Subject
-        </button>
+        <div className="subjects-controls-row">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="All">All</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Not Started">Not Started</option>
+          </select>
+
+          <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+            <option value="Recently Added">Recently Added</option>
+            <option value="Name A-Z">Name A-Z</option>
+            <option value="Progress High-Low">Progress High-Low</option>
+            <option value="Progress Low-High">Progress Low-High</option>
+          </select>
+
+          <button type="button" className="action-button primary" onClick={() => setShowAddModal(true)}>
+            Add Subject
+          </button>
+        </div>
       </div>
 
       {!selectedSubject ? (
-        <div className="subjects-grid">
-          {filteredSubjects.length > 0 ? (
-            filteredSubjects.map((subject) => (
-              <article key={subject.name} className="panel subject-page-card">
+        subjects.length === 0 ? (
+          <div className="panel subject-empty-state">
+            <p>No subjects yet.</p>
+            <span>Add your first subject to start tracking your learning.</span>
+          </div>
+        ) : filteredSubjects.length > 0 ? (
+          <div className="subjects-grid">
+            {filteredSubjects.map((subject) => (
+              <article key={subject.id} className="panel subject-page-card">
                 <div className="subject-card-header">
                   <div>
                     <p className="subject-label">{subject.name}</p>
                     <h3>{subject.progress}%</h3>
                   </div>
-                  <span className={`subject-chip ${subject.accent}`}>{subject.completedTopics}/{subject.totalTopics} topics</span>
+                  <span className="subject-chip">{subject.topics.length} topics</span>
                 </div>
 
                 <div className="progress-track">
@@ -870,28 +1142,30 @@ function SubjectsPage() {
 
                 <div className="subject-meta-list">
                   <div>
-                    <span>Study time</span>
-                    <strong>{subject.studyTime}</strong>
+                    <span>Completed</span>
+                    <strong>{subject.topics.filter((topic) => topic.completed).length}/{subject.topics.length || 0}</strong>
                   </div>
                   <div>
-                    <span>Next topic</span>
-                    <strong>{subject.nextTopic}</strong>
+                    <span>Target</span>
+                    <strong>{subject.target}%</strong>
                   </div>
                 </div>
 
                 <p className="subject-description">{subject.description}</p>
 
-                <button type="button" className="action-button primary full-width" onClick={() => setSelectedSubject(subject)}>
-                  Continue Studying
-                </button>
+                <div className="subject-card-actions">
+                  <button type="button" className="action-button primary full-width" onClick={() => setSelectedSubjectId(subject.id)}>
+                    Open Subject
+                  </button>
+                </div>
               </article>
-            ))
-          ) : (
-            <div className="panel subject-empty-state">
-              <p>No subjects match your search.</p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="panel subject-empty-state">
+            <p>No subjects match your search.</p>
+          </div>
+        )
       ) : (
         <div className="panel subject-detail-panel">
           <div className="subject-detail-hero">
@@ -899,7 +1173,7 @@ function SubjectsPage() {
               <p className="eyebrow">Subject overview</p>
               <h3>{selectedSubject.name}</h3>
             </div>
-            <span className={`subject-chip ${selectedSubject.accent}`}>{selectedSubject.progress}% complete</span>
+            <span className="subject-chip">{selectedSubject.progress}% complete</span>
           </div>
 
           <div className="subject-detail-grid">
@@ -910,11 +1184,15 @@ function SubjectsPage() {
               </div>
               <div className="detail-stat-card">
                 <span>Completed</span>
-                <strong>{completedTopics}/{selectedSubject.totalTopics}</strong>
+                <strong>{completedTopics}/{totalTopics}</strong>
               </div>
               <div className="detail-stat-card">
-                <span>Study time</span>
-                <strong>{selectedSubject.studyTime}</strong>
+                <span>Remaining</span>
+                <strong>{totalTopics - completedTopics}</strong>
+              </div>
+              <div className="detail-stat-card">
+                <span>Target</span>
+                <strong>{selectedSubject.target}%</strong>
               </div>
             </div>
 
@@ -932,21 +1210,46 @@ function SubjectsPage() {
               <span>{completedTopics} completed</span>
             </div>
 
+            <div className="topic-editor">
+              <input
+                type="text"
+                value={newTopicName}
+                onChange={(event) => setNewTopicName(event.target.value)}
+                placeholder="Add a topic"
+              />
+              <button type="button" className="action-button primary" onClick={handleAddTopic}>
+                Add Topic
+              </button>
+            </div>
+
             <ul className="topic-list">
               {selectedSubject.topics.map((topic) => (
-                <li key={topic.name} className={`topic-item ${topic.completed ? 'completed' : 'remaining'}`}>
-                  <span className="topic-check">{topic.completed ? '✓' : '•'}</span>
+                <li key={topic.id} className={`topic-item ${topic.completed ? 'completed' : 'remaining'}`}>
+                  <button
+                    type="button"
+                    className="topic-check-button"
+                    onClick={() => handleToggleTopic(selectedSubject.id, topic.id)}
+                    aria-label={topic.completed ? `Mark ${topic.name} incomplete` : `Mark ${topic.name} complete`}
+                  >
+                    {topic.completed ? '✓' : '•'}
+                  </button>
                   <span>{topic.name}</span>
+                  <button type="button" className="topic-delete-button" onClick={() => handleDeleteTopic(selectedSubject.id, topic.id)}>
+                    Delete
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
 
           <div className="detail-actions">
-            <button type="button" className="action-button primary">
-              Start Study Session
+            <button type="button" className="action-button primary" onClick={() => openEditModal(selectedSubject)}>
+              Edit Subject
             </button>
-            <button type="button" className="action-button secondary" onClick={() => setSelectedSubject(null)}>
+            <button type="button" className="action-button secondary" onClick={() => handleDeleteSubject(selectedSubject.id)}>
+              Delete Subject
+            </button>
+            <button type="button" className="action-button secondary" onClick={() => setSelectedSubjectId(null)}>
               Back to Subjects
             </button>
           </div>
@@ -966,8 +1269,8 @@ function SubjectsPage() {
                 <span>Subject name</span>
                 <input
                   type="text"
-                  value={newSubject.name}
-                  onChange={(event) => setNewSubject((currentState) => ({ ...currentState, name: event.target.value }))}
+                  value={subjectForm.name}
+                  onChange={(event) => setSubjectForm((currentState) => ({ ...currentState, name: event.target.value }))}
                   placeholder="e.g. Biology"
                 />
               </label>
@@ -976,18 +1279,120 @@ function SubjectsPage() {
                 <span>Description</span>
                 <textarea
                   rows="4"
-                  value={newSubject.description}
-                  onChange={(event) => setNewSubject((currentState) => ({ ...currentState, description: event.target.value }))}
+                  value={subjectForm.description}
+                  onChange={(event) => setSubjectForm((currentState) => ({ ...currentState, description: event.target.value }))}
                   placeholder="Describe this subject..."
                 />
               </label>
 
+              <div className="subject-form-row">
+                <label>
+                  <span>Target %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={subjectForm.target}
+                    onChange={(event) => setSubjectForm((currentState) => ({ ...currentState, target: event.target.value }))}
+                  />
+                </label>
+
+                <label>
+                  <span>Initial progress %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={subjectForm.progress}
+                    onChange={(event) => setSubjectForm((currentState) => ({ ...currentState, progress: event.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <label>
+                <span>Topics</span>
+                <textarea
+                  rows="4"
+                  value={subjectForm.topics}
+                  onChange={(event) => setSubjectForm((currentState) => ({ ...currentState, topics: event.target.value }))}
+                  placeholder="Topic 1, Topic 2, Topic 3"
+                />
+              </label>
+
+              {subjectError && <p className="form-validation-message">{subjectError}</p>}
+
               <div className="modal-actions">
-                <button type="button" className="action-button secondary" onClick={() => setShowAddModal(false)}>
+                <button type="button" className="action-button secondary" onClick={() => { setShowAddModal(false); setSubjectError('') }}>
                   Cancel
                 </button>
                 <button type="button" className="action-button primary" onClick={handleAddSubject}>
                   Add Subject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editForm && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="panel subject-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="panel-heading compact">
+              <p className="eyebrow">Edit Subject</p>
+              <h3>Update learning track</h3>
+            </div>
+
+            <div className="subject-form">
+              <label>
+                <span>Subject name</span>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(event) => setEditForm((currentState) => ({ ...currentState, name: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                <span>Description</span>
+                <textarea
+                  rows="4"
+                  value={editForm.description}
+                  onChange={(event) => setEditForm((currentState) => ({ ...currentState, description: event.target.value }))}
+                />
+              </label>
+
+              <div className="subject-form-row">
+                <label>
+                  <span>Target %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editForm.target}
+                    onChange={(event) => setEditForm((currentState) => ({ ...currentState, target: event.target.value }))}
+                  />
+                </label>
+
+                <label>
+                  <span>Progress %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editForm.progress}
+                    onChange={(event) => setEditForm((currentState) => ({ ...currentState, progress: event.target.value }))}
+                  />
+                </label>
+              </div>
+
+              {editError && <p className="form-validation-message">{editError}</p>}
+
+              <div className="modal-actions">
+                <button type="button" className="action-button secondary" onClick={() => { setShowEditModal(false); setEditError('') }}>
+                  Cancel
+                </button>
+                <button type="button" className="action-button primary" onClick={handleSaveEdit}>
+                  Save Changes
                 </button>
               </div>
             </div>
@@ -1657,9 +2062,10 @@ function WeeklyStudyChart() {
   )
 }
 
-function ProgressPage() {
+function ProgressPage({ subjects = [] }) {
   const insightText =
     'You are strongest in Python. Increasing Mathematics practice by 30 minutes per day could improve your overall progress.'
+  const liveSubjects = subjects.length > 0 ? subjects : buildDefaultSubjects()
 
   return (
     <div className="page-shell progress-page">
@@ -1692,8 +2098,8 @@ function ProgressPage() {
             <p className="eyebrow">Subject progress</p>
           </div>
 
-          {subjectData.map((subject) => (
-            <div key={subject.name} className="subject-item">
+          {liveSubjects.map((subject) => (
+            <div key={subject.id || subject.name} className="subject-item">
               <div className="subject-row">
                 <span>{subject.name}</span>
                 <strong>{subject.progress}%</strong>
@@ -1932,6 +2338,20 @@ function Sidebar({ activePage, setActivePage }) {
 function App() {
   const [activePage, setActivePage] = useState('Dashboard')
   const [settings, setSettings] = useState(defaultSettings)
+  const [subjects, setSubjects] = useState(() => {
+    if (typeof window === 'undefined') {
+      return buildDefaultSubjects()
+    }
+
+    try {
+      const storedSubjects = window.localStorage.getItem(SUBJECTS_STORAGE_KEY)
+      const parsedSubjects = storedSubjects ? JSON.parse(storedSubjects) : null
+      const normalizedSubjects = normalizeStoredSubjects(parsedSubjects)
+      return normalizedSubjects.length > 0 ? normalizedSubjects : buildDefaultSubjects()
+    } catch {
+      return buildDefaultSubjects()
+    }
+  })
   const [planner, setPlanner] = useState(() => {
     if (typeof window === 'undefined') {
       return null
@@ -1950,6 +2370,14 @@ function App() {
       return
     }
 
+    window.localStorage.setItem(SUBJECTS_STORAGE_KEY, JSON.stringify(subjects))
+  }, [subjects])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
     if (planner) {
       window.localStorage.setItem(STUDY_PLANNER_STORAGE_KEY, JSON.stringify(planner))
       return
@@ -1960,13 +2388,20 @@ function App() {
 
   const plannerSummary = planner ? getPlannerSummary(planner) : null
   const dashboardStats = [...initialDashboardStats]
+  const averageSubjectProgress = subjects.length > 0 ? Math.round(subjects.reduce((sum, subject) => sum + (Number(subject.progress) || 0), 0) / subjects.length) : 0
 
   if (plannerSummary && plannerSummary.totalSessions > 0) {
     const plannerProgress = Math.min(100, Math.round((plannerSummary.completedSessions / plannerSummary.totalSessions) * 100))
     dashboardStats[0] = {
       label: 'Overall Progress',
-      value: `${plannerProgress}%`,
+      value: `${Math.max(plannerProgress, averageSubjectProgress)}%`,
       detail: `${plannerSummary.completedSessions}/${plannerSummary.totalSessions} planner sessions`,
+    }
+  } else if (subjects.length > 0) {
+    dashboardStats[0] = {
+      label: 'Overall Progress',
+      value: `${averageSubjectProgress}%`,
+      detail: `${subjects.length} tracked subjects`,
     }
   }
 
@@ -1984,24 +2419,48 @@ function App() {
     ...initialDashboardActivities,
   ].slice(0, 6)
 
+  const handleQuizComplete = (resultSummary) => {
+    if (!resultSummary?.subject || !Array.isArray(subjects)) {
+      return
+    }
+
+    const subjectName = resultSummary.subject
+    setSubjects((currentSubjects) =>
+      currentSubjects.map((subject) => {
+        if (subject.name.toLowerCase() !== subjectName.toLowerCase()) {
+          return subject
+        }
+
+        const nextProgress = Math.min(100, subject.progress + 5)
+        return {
+          ...subject,
+          progress: nextProgress,
+          topics: subject.topics.map((topic, index) => 
+            index === 0 && !topic.completed ? { ...topic, completed: true } : topic,
+          ),
+        }
+      }),
+    )
+  }
+
   const renderPage = () => {
     switch (activePage) {
       case 'Dashboard':
-        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} />
+        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} subjects={subjects} />
       case 'My Subjects':
-        return <SubjectsPage />
+        return <SubjectsPage subjects={subjects} setSubjects={setSubjects} />
       case 'AI Tutor':
         return <TutorPage />
       case 'Study Planner':
         return <PlannerPage planner={planner} setPlanner={setPlanner} />
       case 'Quiz':
-        return <QuizPage onNavigate={setActivePage} />
+        return <QuizPage onNavigate={setActivePage} onQuizComplete={handleQuizComplete} />
       case 'Progress':
-        return <ProgressPage />
+        return <ProgressPage subjects={subjects} />
       case 'Settings':
         return <SettingsPage settings={settings} setSettings={setSettings} onSave={setSettings} />
       default:
-        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} />
+        return <DashboardPage stats={dashboardStats} activities={dashboardActivities} subjects={subjects} />
     }
   }
 
