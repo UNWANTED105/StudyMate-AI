@@ -1,3 +1,6 @@
+import process from 'node:process'
+import { generateTutorResponse, getAiProvider } from './aiProvider.js'
+import { extractAttachmentContent } from './attachments.js'
 import { buildTutorSystemPrompt } from './tutorPrompt.js'
 
 const MAX_MESSAGE_LENGTH = 4000
@@ -17,59 +20,6 @@ const normalizeHistory = (history) => {
     }))
 }
 
-const buildStubAnswer = ({ message, level, subject, topic, mode }) => {
-  const topicLine = topic?.trim() ? ` about "${topic.trim()}"` : ''
-
-  return [
-    `StudyMate Tutor (demo mode — set OPENAI_API_KEY on the server for live AI responses).`,
-    '',
-    `Level: ${level}`,
-    `Subject: ${subject}`,
-    `Mode: ${mode}`,
-    '',
-    `Your question${topicLine}: ${message}`,
-    '',
-    'In production, the tutor will generate a full answer here based on your selected level, subject, and mode.',
-  ].join('\n')
-}
-
-const callOpenAi = async ({ systemPrompt, history, message, apiKey }) => {
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...history,
-    { role: 'user', content: message },
-  ]
-
-  const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.7,
-      max_tokens: 900,
-    }),
-  })
-
-  const data = await openAiResponse.json()
-
-  if (!openAiResponse.ok) {
-    const errorMessage = data?.error?.message || 'OpenAI request failed.'
-    return { ok: false, error: errorMessage }
-  }
-
-  const answer = data?.choices?.[0]?.message?.content?.trim()
-
-  if (!answer) {
-    return { ok: false, error: 'No answer was returned by the tutor.' }
-  }
-
-  return { ok: true, answer }
-}
-
 export const processTutorChat = async (body = {}) => {
   const message = String(body.message || body.question || '').trim()
   const level = String(body.level || 'Class 9-10').trim()
@@ -77,6 +27,19 @@ export const processTutorChat = async (body = {}) => {
   const topic = String(body.topic || '').trim()
   const mode = String(body.mode || 'Explain').trim()
   const history = normalizeHistory(body.history)
+  const attachment = body.attachment
+  const selectedProvider = getAiProvider()
+
+  console.info('[tutor-provider]', { provider: selectedProvider })
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[tutor-process]', {
+      hasAttachment: Boolean(attachment),
+      filename: attachment?.filename,
+      mimeType: attachment?.mimeType,
+      size: attachment?.buffer?.length,
+    })
+  }
 
   if (!message) {
     return {
@@ -92,27 +55,41 @@ export const processTutorChat = async (body = {}) => {
     }
   }
 
-  const systemPrompt = buildTutorSystemPrompt({ level, subject, topic, mode })
-  const apiKey = process.env.OPENAI_API_KEY
-
-  if (!apiKey) {
-    return {
-      status: 200,
-      body: {
-        answer: buildStubAnswer({ message, level, subject, topic, mode }),
-        mode,
-        provider: 'stub',
-      },
+  let attachmentContent = null
+  if (attachment) {
+    attachmentContent = await extractAttachmentContent(attachment)
+    if (!attachmentContent.ok) {
+      return {
+        status: 400,
+        body: { error: attachmentContent.error },
+      }
     }
   }
 
+  const systemPrompt = buildTutorSystemPrompt({
+    level,
+    subject,
+    topic,
+    mode,
+    attachmentKind: attachmentContent?.kind,
+  })
+
   try {
-    const result = await callOpenAi({ systemPrompt, history, message, apiKey })
+    const result = await generateTutorResponse({
+      systemPrompt,
+      history,
+      message,
+      attachmentContent,
+      level,
+      subject,
+      topic,
+      mode,
+    })
 
     if (!result.ok) {
       return {
-        status: 502,
-        body: { error: result.error },
+        status: result.status || 502,
+        body: { error: result.error || 'AI provider is currently unavailable.' },
       }
     }
 
@@ -121,7 +98,7 @@ export const processTutorChat = async (body = {}) => {
       body: {
         answer: result.answer,
         mode,
-        provider: 'openai',
+        provider: result.provider,
       },
     }
   } catch (error) {
