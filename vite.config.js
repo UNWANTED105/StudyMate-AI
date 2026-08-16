@@ -1,13 +1,8 @@
-<<<<<<< Updated upstream
 import 'dotenv/config'
-import { defineConfig } from 'vite'
-=======
 import process from 'node:process'
 import { defineConfig, loadEnv } from 'vite'
->>>>>>> Stashed changes
 import react from '@vitejs/plugin-react'
 import { processTutorChat } from './api/_lib/tutorChat.js'
-import { parseTutorRequest } from './api/_lib/parseTutorRequest.js'
 
 const tutorApiPaths = new Set(['/api/tutor/chat', '/api/ask-tutor'])
 
@@ -22,27 +17,42 @@ const applyServerEnv = (mode) => {
   }
 }
 
+const readRequestBody = (request) =>
+  new Promise((resolve, reject) => {
+    let body = ''
+
+    request.on('data', (chunk) => {
+      body += chunk
+    })
+
+    request.on('end', () => {
+      resolve(body)
+    })
+
+    request.on('error', reject)
+  })
+
 const tutorApiDevPlugin = () => ({
   name: 'tutor-api-dev',
   configureServer(server) {
     applyServerEnv(server.config.mode)
 
     server.middlewares.use(async (request, response, next) => {
-      const requestPath = request.url?.split('?')[0]
-      if (request.method !== 'POST' || !tutorApiPaths.has(requestPath)) {
+      if (request.method !== 'POST' || !tutorApiPaths.has(request.url?.split('?')[0])) {
         next()
         return
       }
 
       try {
-        const payload = await parseTutorRequest(request)
-        const result = await processTutorChat(payload)
+        const rawBody = await readRequestBody(request)
+        const parsedBody = rawBody ? JSON.parse(rawBody) : {}
+        const result = await processTutorChat(parsedBody)
 
         response.statusCode = result.status
         response.setHeader('Content-Type', 'application/json')
         response.end(JSON.stringify(result.body))
       } catch (error) {
-        response.statusCode = error?.status || 500
+        response.statusCode = 500
         response.setHeader('Content-Type', 'application/json')
         response.end(
           JSON.stringify({
