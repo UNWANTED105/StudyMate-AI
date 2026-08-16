@@ -1,4 +1,4 @@
-import { processTutorChat } from './_lib/tutorChat.js'
+import { processTutorChat } from '../_lib/tutorChat.js'
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
