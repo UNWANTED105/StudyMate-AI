@@ -624,6 +624,70 @@
   color: #7dd3fc;
 }
 
+.tutor-composer {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tutor-panel .chat-input-row {
+  margin-top: 0;
+  align-items: stretch;
+}
+
+.tutor-panel .chat-input-row input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.tutor-file-input {
+  display: none;
+}
+
+.tutor-attach-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tutor-attachment-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.theme-light .tutor-attachment-bar {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.tutor-attachment-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  word-break: break-word;
+}
+
+.theme-light .tutor-attachment-name {
+  color: #64748b;
+}
+
+.tutor-remove-attachment {
+  flex-shrink: 0;
+}
+
+.tutor-attachment-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #f87171;
+}
+
 .chat-bubble.ai {
   white-space: pre-wrap;
 }
@@ -2595,6 +2659,15 @@ textarea {
   .planner-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .tutor-panel .chat-input-row {
+    flex-wrap: wrap;
+  }
+
+  .tutor-panel .chat-input-row input[type='text'] {
+    flex: 1 1 100%;
+    order: -1;
+  }
 }
 
 @media (max-width: 820px) {
@@ -2654,6 +2727,24 @@ textarea {
 
   .chat-input-row {
     display: flex;
+  }
+
+  .tutor-panel .chat-input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tutor-panel .chat-input-row input[type='text'] {
+    grid-column: 1 / -1;
+  }
+
+  .tutor-panel .chat-input-row .action-button.primary {
+    grid-column: 1 / -1;
+  }
+
+  .tutor-attach-button,
+  .tutor-remove-attachment {
+    width: 100%;
   }
 }
 

@@ -10,6 +10,23 @@ import {
 
 const createMessageId = () => `msg-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
 
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'pdf'])
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+])
+
+const getFileExtension = (filename = '') => filename.split('.').pop()?.toLowerCase() || ''
+
+const isAllowedAttachment = (file) => {
+  const extension = getFileExtension(file.name)
+  const mimeType = (file.type || '').toLowerCase()
+  return ALLOWED_ATTACHMENT_EXTENSIONS.has(extension) || ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)
+}
+
 function TutorPage() {
   const initialSession = loadTutorSession()
   const [level, setLevel] = useState(initialSession.level)
@@ -19,8 +36,12 @@ function TutorPage() {
   const [mode, setMode] = useState(initialSession.mode)
   const [messages, setMessages] = useState(initialSession.messages)
   const [studentInput, setStudentInput] = useState('')
+  const [attachedFile, setAttachedFile] = useState(null)
+  const [attachmentError, setAttachmentError] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const chatWindowRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
 
   useEffect(() => {
     saveTutorSession({
@@ -40,9 +61,75 @@ function TutorPage() {
     }
   }, [messages, isTyping])
 
+  const clearAttachmentInputs = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
+    }
+  }
+
   const handleNewConversation = () => {
     setMessages([createWelcomeMessage()])
     setStudentInput('')
+    setAttachedFile(null)
+    setAttachmentError('')
+    clearAttachmentInputs()
+  }
+
+  const openFilePicker = () => {
+    if (!fileInputRef.current) {
+      return
+    }
+    fileInputRef.current.value = ''
+    fileInputRef.current.click()
+  }
+
+  const openCameraPicker = () => {
+    if (!cameraInputRef.current) {
+      return
+    }
+    cameraInputRef.current.value = ''
+    cameraInputRef.current.click()
+  }
+
+  const handleAttachmentChange = (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!isAllowedAttachment(file)) {
+      setAttachedFile(null)
+      setAttachmentError('Please select a JPG, JPEG, PNG, WEBP, or PDF file.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setAttachedFile(null)
+      setAttachmentError('File must be 10 MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    if (event.target === fileInputRef.current && cameraInputRef.current) {
+      cameraInputRef.current.value = ''
+    }
+    if (event.target === cameraInputRef.current && fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+
+    setAttachedFile(file)
+    setAttachmentError('')
+  }
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null)
+    setAttachmentError('')
+    clearAttachmentInputs()
   }
 
   const sendTutorQuestion = async (messageText) => {
@@ -230,7 +317,33 @@ function TutorPage() {
           )}
         </div>
 
+        <input
+          ref={fileInputRef}
+          className="tutor-file-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
+          onChange={handleAttachmentChange}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+        <input
+          ref={cameraInputRef}
+          className="tutor-file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleAttachmentChange}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
         <div className="chat-input-row">
+          <button type="button" className="action-button secondary tutor-attach-button" onClick={openFilePicker} aria-label="File">
+            📎 File
+          </button>
+          <button type="button" className="action-button secondary tutor-attach-button" onClick={openCameraPicker} aria-label="Camera">
+            📷 Camera
+          </button>
           <input
             type="text"
             value={studentInput}
@@ -243,6 +356,17 @@ function TutorPage() {
             Send
           </button>
         </div>
+
+        {attachedFile && (
+          <div className="tutor-attachment-bar">
+            <span className="tutor-attachment-name">{attachedFile.name}</span>
+            <button type="button" className="action-button secondary tutor-remove-attachment" onClick={handleRemoveAttachment}>
+              Remove
+            </button>
+          </div>
+        )}
+
+        {attachmentError ? <p className="tutor-attachment-error">{attachmentError}</p> : null}
       </section>
     </div>
   )
