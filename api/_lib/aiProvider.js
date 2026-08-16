@@ -9,7 +9,12 @@ export const DEFAULT_OLLAMA_MODEL = 'qwen3:0.6b'
 const LOCAL_ATTACHMENT_ERROR =
   'Local attachment analysis requires a vision/document-capable local model. The current local model is text-only.'
 
-const stripWrappingQuotes = (value) => String(value || '').trim().replace(/^['"]|['"]$/g, '')
+const stripWrappingQuotes = (value) =>
+  String(value || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/\r/g, '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
 
 export const getAiProvider = () => {
   const value = stripWrappingQuotes(process.env.AI_PROVIDER || 'open_source').toLowerCase()
@@ -121,7 +126,6 @@ const postJsonWithNodeHttp = (urlString, payload) =>
         port: url.port || (url.protocol === 'https:' ? 443 : 80),
         path: `${url.pathname}${url.search}`,
         method: 'POST',
-        family: 4,
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(body),
@@ -291,9 +295,39 @@ const generateOpenSourceResponse = async ({ systemPrompt, history, message, atta
     provider: 'open_source',
     ollamaUrl,
     model,
+    AI_PROVIDER: process.env.AI_PROVIDER || '(unset)',
+    OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || '(unset)',
+    OLLAMA_MODEL: process.env.OLLAMA_MODEL || '(unset)',
   })
 
   try {
+    const tagsUrl = `${getOllamaBaseUrl()}/api/tags`
+    try {
+      const tagsResponse = await fetch(tagsUrl)
+      logOllamaDiagnostic({
+        probe: 'tags',
+        ollamaUrl: tagsUrl,
+        httpStatus: tagsResponse.status,
+        reachedOllama: true,
+      })
+    } catch (error) {
+      logOllamaDiagnostic({
+        probe: 'tags',
+        ollamaUrl: tagsUrl,
+        reachedOllama: false,
+        errorName: error instanceof Error ? error.name : 'Error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCause: getErrorCauseCode(error),
+      })
+    }
+
+    logOllamaDiagnostic({
+      provider: 'open_source',
+      ollamaUrl,
+      model,
+      reachedOllamaFetch: true,
+    })
+
     const ollamaResponse = await postOllamaChat(ollamaUrl, payload)
 
     logOllamaDiagnostic({
@@ -323,27 +357,40 @@ const generateOpenSourceResponse = async ({ systemPrompt, history, message, atta
       }
     }
 
-    const answer = stripThinkTags(data?.message?.content)
+    const rawContent = data?.message?.content
+    const answer = stripThinkTags(rawContent) || String(rawContent || '').trim()
     if (!answer) {
       return { ok: false, status: 502, error: 'No answer was returned by the tutor.' }
     }
 
     return { ok: true, provider: 'open_source', answer }
   } catch (error) {
+    const errorName = error instanceof Error ? error.name : 'Error'
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorCause = getErrorCauseCode(error)
+
     logOllamaDiagnostic({
       provider: 'open_source',
       ollamaUrl,
       model,
       reachedOllama: false,
-      errorName: error instanceof Error ? error.name : 'Error',
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorCause: getErrorCauseCode(error),
+      errorName,
+      errorMessage,
+      errorCause,
     })
+
+    const connectionFailed =
+      errorCause.includes('ECONNREFUSED') ||
+      errorCause.includes('ENOTFOUND') ||
+      errorCause.includes('ECONNRESET') ||
+      errorMessage.includes('fetch failed')
 
     return {
       ok: false,
       status: 503,
-      error: `Unable to connect to local Ollama at ${getOllamaBaseUrl()}. Make sure Ollama is running.`,
+      error: connectionFailed
+        ? `Unable to connect to local Ollama at ${getOllamaBaseUrl()}. Make sure Ollama is running.`
+        : `Local Ollama request failed: ${errorName}: ${errorMessage}${errorCause ? ` (${errorCause})` : ''}`,
     }
   }
 }
@@ -359,7 +406,14 @@ export const generateTutorResponse = async ({
   mode,
 }) => {
   const provider = getAiProvider()
-  console.info('[tutor-provider]', { provider })
+  console.info('[tutor-provider]', {
+    provider,
+    AI_PROVIDER: process.env.AI_PROVIDER || '(unset)',
+    OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || '(unset)',
+    OLLAMA_MODEL: process.env.OLLAMA_MODEL || '(unset)',
+    ollamaUrl: getOllamaChatUrl(),
+    model: getOllamaModel(),
+  })
 
   if (provider === 'openai') {
     return generateOpenAiResponse({
