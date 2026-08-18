@@ -150,12 +150,14 @@ export const extractAttachmentContent = async (attachment) => {
 
   if (IMAGE_MIME_TYPES.has(mimeType) || ['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
     const resolvedMime = normalizeImageMimeType(mimeType, extension)
+    const rawBase64 = attachment.buffer.toString('base64').replace(/^data:[^;]+;base64,/i, '')
     return {
       ok: true,
       kind: 'image',
       mimeType: resolvedMime,
       filename,
-      base64: attachment.buffer.toString('base64'),
+      byteSize: attachment.buffer.length,
+      base64: rawBase64,
     }
   }
 

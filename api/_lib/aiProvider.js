@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer'
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
 export const DEFAULT_OLLAMA_MODEL = 'qwen3:0.6b'
+export const DEFAULT_OLLAMA_VISION_MODEL = 'moondream'
 
 const LOCAL_ATTACHMENT_ERROR =
   'Local attachment analysis requires a vision/document-capable local model. The current local model is text-only.'
@@ -40,6 +41,65 @@ export const getOllamaBaseUrl = () => {
 export const getOllamaChatUrl = () => `${getOllamaBaseUrl()}/api/chat`
 
 export const getOllamaModel = () => stripWrappingQuotes(process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL) || DEFAULT_OLLAMA_MODEL
+
+export const getOllamaVisionModel = () =>
+  stripWrappingQuotes(process.env.OLLAMA_VISION_MODEL || DEFAULT_OLLAMA_VISION_MODEL) || DEFAULT_OLLAMA_VISION_MODEL
+
+const toRawBase64 = (value) =>
+  String(value || '')
+    .trim()
+    .replace(/^data:[^;]+;base64,/i, '')
+    .replace(/\s/g, '')
+
+const isValidBase64Image = (value) => {
+  if (!value || value.length < 16 || value.length % 4 !== 0) {
+    return false
+  }
+
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+    return false
+  }
+
+  try {
+    return Buffer.from(value, 'base64').length > 0
+  } catch {
+    return false
+  }
+}
+
+const classifyOllamaVisionError = ({ model, status, detail, errorMessage, errorCause }) => {
+  const combined = `${detail || ''} ${errorMessage || ''} ${errorCause || ''}`.toLowerCase()
+
+  if (String(errorMessage || '').toLowerCase().includes('timed out') || combined.includes('etimedout')) {
+    return 'Ollama vision request timed out.'
+  }
+
+  if (
+    (combined.includes('model') && combined.includes('not found')) ||
+    combined.includes('no such file or directory') ||
+    combined.includes('file does not exist')
+  ) {
+    return `Vision model "${model}" is missing in Ollama.`
+  }
+
+  if (combined.includes('invalid image') || combined.includes('unsupported image') || combined.includes('image format')) {
+    return 'Ollama rejected the image as unsupported or malformed.'
+  }
+
+  if (combined.includes('base64') || combined.includes('illegal base64') || combined.includes('invalid encoding')) {
+    return 'Ollama rejected the image payload as invalid base64.'
+  }
+
+  if (status) {
+    return `Ollama HTTP error ${status}${detail ? `: ${detail}` : '.'}`
+  }
+
+  if (errorMessage) {
+    return `Ollama vision request failed: ${errorMessage}${errorCause ? ` (${errorCause})` : ''}`
+  }
+
+  return 'Ollama vision request failed.'
+}
 
 const buildStubAnswer = ({ message, level, subject, topic, mode }) => {
   const topicLine = topic?.trim() ? ` about "${topic.trim()}"` : ''
@@ -162,6 +222,7 @@ const postOllamaChat = async (url, payload) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
     })
 
     const text = await response.text()
@@ -264,6 +325,161 @@ const generateOpenAiResponse = async ({
       ok: false,
       status: 502,
       error: error instanceof Error ? error.message : 'AI provider is currently unavailable.',
+    }
+  }
+}
+
+const generateOllamaVisionResponse = async ({ message, attachmentContent }) => {
+  const ollamaUrl = getOllamaChatUrl()
+  const model = getOllamaVisionModel()
+  const rawBase64 = toRawBase64(attachmentContent?.base64)
+  const imagesPresent = Boolean(rawBase64)
+  const imageCount = rawBase64 ? 1 : 0
+
+  console.info('[tutor-vision]', {
+    hasAttachment: Boolean(attachmentContent),
+    filename: attachmentContent?.filename,
+    mimeType: attachmentContent?.mimeType,
+    byteSize: attachmentContent?.byteSize,
+    selectedProvider: 'open_source',
+    selectedModel: model,
+    imagesPresent,
+    imageCount,
+    ollamaUrl,
+  })
+
+  if (!attachmentContent?.kind || attachmentContent.kind !== 'image') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Image analysis requires an image attachment.',
+    }
+  }
+
+  if (!rawBase64) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Malformed image payload: no image bytes were received.',
+    }
+  }
+
+  if (!isValidBase64Image(rawBase64)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Invalid base64 image payload.',
+    }
+  }
+
+  const payload = {
+    model,
+    messages: [
+      {
+        role: 'user',
+        content: message,
+        images: [rawBase64],
+      },
+    ],
+    stream: false,
+  }
+
+  try {
+    const ollamaResponse = await postOllamaChat(ollamaUrl, payload)
+    let data = null
+    if (ollamaResponse.text) {
+      try {
+        data = JSON.parse(ollamaResponse.text)
+      } catch {
+        data = null
+      }
+    }
+
+    const detail = data?.error || String(ollamaResponse.text || '').slice(0, 300)
+
+    console.info('[tutor-vision]', {
+      hasAttachment: true,
+      filename: attachmentContent.filename,
+      mimeType: attachmentContent.mimeType,
+      byteSize: attachmentContent.byteSize,
+      selectedProvider: 'open_source',
+      selectedModel: model,
+      imagesPresent: true,
+      imageCount: 1,
+      ollamaHttpStatus: ollamaResponse.status,
+      ollamaError: ollamaResponse.ok ? null : String(detail || '').slice(0, 300),
+    })
+
+    if (!ollamaResponse.ok) {
+      return {
+        ok: false,
+        status: 502,
+        error: classifyOllamaVisionError({
+          model,
+          status: ollamaResponse.status,
+          detail,
+        }),
+      }
+    }
+
+    if (data?.error) {
+      return {
+        ok: false,
+        status: 502,
+        error: classifyOllamaVisionError({
+          model,
+          status: ollamaResponse.status,
+          detail: data.error,
+        }),
+      }
+    }
+
+    const returnedModel = String(data?.model || '')
+    if (returnedModel && returnedModel === getOllamaModel()) {
+      return {
+        ok: false,
+        status: 502,
+        error: `Image analysis was routed to the text model "${returnedModel}" instead of "${model}".`,
+      }
+    }
+
+    const rawContent = data?.message?.content
+    const answer = stripThinkTags(rawContent) || String(rawContent || '').trim()
+    if (!answer) {
+      return { ok: false, status: 502, error: 'No answer was returned by the vision model.' }
+    }
+
+    return { ok: true, provider: 'open_source', model, answer }
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : 'Error'
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorCause = getErrorCauseCode(error)
+
+    console.info('[tutor-vision]', {
+      hasAttachment: true,
+      filename: attachmentContent.filename,
+      mimeType: attachmentContent.mimeType,
+      byteSize: attachmentContent.byteSize,
+      selectedProvider: 'open_source',
+      selectedModel: model,
+      imagesPresent: true,
+      imageCount: 1,
+      ollamaHttpStatus: null,
+      ollamaError: `${errorName}: ${errorMessage}`.slice(0, 300),
+    })
+
+    const connectionFailed =
+      errorCause.includes('ECONNREFUSED') ||
+      errorCause.includes('ENOTFOUND') ||
+      errorCause.includes('ECONNRESET') ||
+      errorMessage.includes('fetch failed')
+
+    return {
+      ok: false,
+      status: 503,
+      error: connectionFailed
+        ? `Unable to connect to local Ollama at ${getOllamaBaseUrl()} for vision model "${model}".`
+        : classifyOllamaVisionError({ model, errorMessage, errorCause }),
     }
   }
 }
@@ -406,14 +622,32 @@ export const generateTutorResponse = async ({
   mode,
 }) => {
   const provider = getAiProvider()
+  const isImageAttachment = attachmentContent?.kind === 'image'
+  const selectedModel = isImageAttachment ? getOllamaVisionModel() : getOllamaModel()
+
   console.info('[tutor-provider]', {
-    provider,
+    provider: isImageAttachment ? 'open_source' : provider,
     AI_PROVIDER: process.env.AI_PROVIDER || '(unset)',
     OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || '(unset)',
     OLLAMA_MODEL: process.env.OLLAMA_MODEL || '(unset)',
+    OLLAMA_VISION_MODEL: process.env.OLLAMA_VISION_MODEL || '(unset)',
     ollamaUrl: getOllamaChatUrl(),
-    model: getOllamaModel(),
+    selectedProvider: isImageAttachment ? 'open_source' : provider,
+    selectedModel,
+    hasAttachment: Boolean(attachmentContent),
+    filename: attachmentContent?.filename,
+    mimeType: attachmentContent?.mimeType,
+    byteSize: attachmentContent?.byteSize,
+    imagesPresent: isImageAttachment,
+    imageCount: isImageAttachment ? 1 : 0,
   })
+
+  if (isImageAttachment) {
+    return generateOllamaVisionResponse({
+      message,
+      attachmentContent,
+    })
+  }
 
   if (provider === 'openai') {
     return generateOpenAiResponse({
