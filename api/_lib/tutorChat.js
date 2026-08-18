@@ -1,4 +1,3 @@
-import process from 'node:process'
 import { generateTutorResponse, getAiProvider } from './aiProvider.js'
 import { extractAttachmentContent } from './attachments.js'
 import { buildTutorSystemPrompt } from './tutorPrompt.js'
@@ -32,14 +31,13 @@ export const processTutorChat = async (body = {}) => {
 
   console.info('[tutor-provider]', { provider: selectedProvider })
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[tutor-process]', {
-      hasAttachment: Boolean(attachment),
-      filename: attachment?.filename,
-      mimeType: attachment?.mimeType,
-      size: attachment?.buffer?.length,
-    })
-  }
+  console.info('[tutor-process]', {
+    hasAttachment: Boolean(attachment),
+    filename: attachment?.filename,
+    mimeType: attachment?.mimeType,
+    byteSize: attachment?.buffer?.length,
+    selectedProvider,
+  })
 
   if (!message) {
     return {
@@ -75,6 +73,15 @@ export const processTutorChat = async (body = {}) => {
   })
 
   try {
+    console.info('[tutor-process]', {
+      hasAttachment: Boolean(attachmentContent),
+      filename: attachmentContent?.filename,
+      mimeType: attachmentContent?.mimeType,
+      byteSize: attachmentContent?.byteSize || attachment?.buffer?.length,
+      selectedProvider,
+      attachmentKind: attachmentContent?.kind || null,
+    })
+
     const result = await generateTutorResponse({
       systemPrompt,
       history,

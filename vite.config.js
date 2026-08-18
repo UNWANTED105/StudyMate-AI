@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react'
 
 const tutorApiPaths = new Set(['/api/tutor/chat', '/api/ask-tutor'])
 
-const SERVER_ENV_KEYS = ['OPENAI_API_KEY', 'AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL']
+const SERVER_ENV_KEYS = ['OPENAI_API_KEY', 'AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'OLLAMA_VISION_MODEL']
 
 const applyServerEnv = (mode) => {
   const fileEnv = loadEnv(mode || 'development', process.cwd(), '')
@@ -18,26 +18,16 @@ const applyServerEnv = (mode) => {
   }
 }
 
-const loadProcessTutorChat = async () => {
-  const moduleUrl = pathToFileURL(path.resolve(process.cwd(), 'api/_lib/tutorChat.js')).href
-  const module = await import(moduleUrl)
-  return module.processTutorChat
+const loadTutorApiModules = async () => {
+  const cacheBust = `?t=${Date.now()}`
+  const tutorChatUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/_lib/tutorChat.js')).href}${cacheBust}`
+  const parserUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/_lib/parseTutorRequest.js')).href}${cacheBust}`
+  const [{ processTutorChat }, { parseTutorRequest }] = await Promise.all([
+    import(tutorChatUrl),
+    import(parserUrl),
+  ])
+  return { processTutorChat, parseTutorRequest }
 }
-
-const readRequestBody = (request) =>
-  new Promise((resolve, reject) => {
-    let body = ''
-
-    request.on('data', (chunk) => {
-      body += chunk
-    })
-
-    request.on('end', () => {
-      resolve(body)
-    })
-
-    request.on('error', reject)
-  })
 
 const tutorApiDevPlugin = () => ({
   name: 'tutor-api-dev',
@@ -56,6 +46,7 @@ const tutorApiDevPlugin = () => ({
         AI_PROVIDER: process.env.AI_PROVIDER || '(unset)',
         OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || '(unset)',
         OLLAMA_MODEL: process.env.OLLAMA_MODEL || '(unset)',
+        OLLAMA_VISION_MODEL: process.env.OLLAMA_VISION_MODEL || '(unset)',
       })
 
       try {
@@ -75,9 +66,8 @@ const tutorApiDevPlugin = () => ({
       }
 
       try {
-        const rawBody = await readRequestBody(request)
-        const parsedBody = rawBody ? JSON.parse(rawBody) : {}
-        const processTutorChat = await loadProcessTutorChat()
+        const { processTutorChat, parseTutorRequest } = await loadTutorApiModules()
+        const parsedBody = await parseTutorRequest(request)
         const result = await processTutorChat(parsedBody)
 
         response.statusCode = result.status

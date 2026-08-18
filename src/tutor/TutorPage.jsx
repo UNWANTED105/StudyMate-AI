@@ -153,20 +153,39 @@ function TutorPage() {
     setIsTyping(true)
 
     try {
-      const response = await fetch('/api/tutor/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: text,
-          level,
-          subject: resolvedSubject,
-          topic: topic.trim(),
-          mode,
-          history: buildTutorHistory(nextMessages.slice(0, -1)),
-        }),
-      })
+      const payload = {
+        message: text,
+        level,
+        subject: resolvedSubject,
+        topic: topic.trim(),
+        mode,
+        history: buildTutorHistory(nextMessages.slice(0, -1)),
+      }
+
+      let response
+      if (attachedFile) {
+        const formData = new FormData()
+        formData.append('message', payload.message)
+        formData.append('level', payload.level)
+        formData.append('subject', payload.subject)
+        formData.append('topic', payload.topic)
+        formData.append('mode', payload.mode)
+        formData.append('history', JSON.stringify(payload.history))
+        formData.append('attachment', attachedFile, attachedFile.name)
+
+        response = await fetch('/api/tutor/chat', {
+          method: 'POST',
+          body: formData,
+        })
+      } else {
+        response = await fetch('/api/tutor/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
+      }
 
       const data = await response.json()
 
